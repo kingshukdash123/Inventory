@@ -17,8 +17,8 @@ export default function CustomDialog({
   const typeConfig = {
     info: {
       icon: Info,
-      iconClass: 'text-sky-400 bg-sky-500/10 border-sky-500/20',
-      btnClass: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+      iconClass: 'text-zinc-200 bg-zinc-800 border-zinc-750',
+      btnClass: 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-750'
     },
     warning: {
       icon: AlertTriangle,

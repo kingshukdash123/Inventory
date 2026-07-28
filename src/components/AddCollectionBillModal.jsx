@@ -318,7 +318,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
                         {/* Calculated Doctor Rate */}
                         <td className="p-2">
-                          <div className="w-full bg-zinc-900 border border-zinc-800/80 rounded px-2 py-1 text-xs text-sky-300 text-right font-mono font-semibold">
+                          <div className="w-full bg-zinc-900 border border-zinc-800/80 rounded px-2 py-1 text-xs text-zinc-300 text-right font-mono font-semibold">
                             {calc.doctorRate.toFixed(2)}
                           </div>
                         </td>
@@ -369,7 +369,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
                         {/* Line Amount */}
                         <td className="p-2 text-right">
-                          <div className="w-full bg-zinc-900 border border-zinc-800/80 rounded px-2 py-1 text-xs text-emerald-400 font-bold text-right font-mono">
+                          <div className="w-full bg-zinc-900 border border-zinc-800/80 rounded px-2 py-1 text-xs text-zinc-100 font-bold text-right font-mono">
                             {calc.amount.toFixed(2)}
                           </div>
                         </td>
@@ -416,7 +416,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
               <div className="flex justify-between text-xs text-zinc-300">
                 <span>Total Doctor Rate:</span>
-                <span className="font-mono font-semibold text-sky-300">{formatCurrency(summary.totalDoctorRate)}</span>
+                <span className="font-mono font-semibold text-zinc-300">{formatCurrency(summary.totalDoctorRate)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
@@ -436,7 +436,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
               <div className="flex justify-between text-sm font-bold text-zinc-100 border-t border-zinc-800 pt-2">
                 <span>Grand Total Amount:</span>
-                <span className="font-mono text-emerald-400 text-base">{formatCurrency(summary.grandTotal)}</span>
+                <span className="font-mono text-zinc-100 text-base">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>
           </div>
@@ -453,9 +453,9 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               title="Save as a local draft"
             >
               {isSubmitting && submitMode === 'local' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-sky-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
               ) : (
-                <HardDrive className="h-4 w-4 text-sky-400" />
+                <HardDrive className="h-4 w-4 text-zinc-400" />
               )}
               <span>{isSubmitting && submitMode === 'local' ? 'Saving Draft...' : 'Save as Draft'}</span>
             </button>
