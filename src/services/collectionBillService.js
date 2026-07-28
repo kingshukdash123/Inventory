@@ -2,6 +2,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   updateDoc,
   deleteDoc,
   doc,
@@ -12,6 +13,7 @@ import {
 import { db } from '../config/firebase';
 import { calculateBillSummary, calculateLineItem } from '../utils/calculations';
 import { CollectionBill } from '../models/collectionBillModel';
+import { removeBillFromStock } from './stockService';
 
 const COLLECTION_NAME = 'collection_bill';
 const DRAFT_STORAGE_KEY = 'inventory_draft_collection_bills_local';
@@ -154,10 +156,21 @@ export async function updateCollectionBillInFirestore(collectionBillId, collecti
     notes: collectionBillData.notes || '',
     items: formattedItems,
     summary: summary,
-    isDraft: false
+    isDraft: false,
+    addedToStock: false // Always reset to false on edit/update
   });
 
   const docRef = doc(db, COLLECTION_NAME, collectionBillId);
+
+  // Revert old stock if the original bill was already synced
+  const oldDocSnap = await getDoc(docRef);
+  if (oldDocSnap.exists()) {
+    const oldData = oldDocSnap.data();
+    if (oldData.addedToStock) {
+      const oldBill = CollectionBill.fromJson({ id: collectionBillId, ...oldData });
+      await removeBillFromStock(oldBill);
+    }
+  }
 
   // Build clean payload for update
   const payload = collectionBill.toJson();
@@ -194,7 +207,16 @@ export async function fetchCollectionBillsFromFirestore() {
 
 export async function deleteCollectionBillFromFirestore(collectionBillId) {
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, collectionBillId));
+    const docRef = doc(db, COLLECTION_NAME, collectionBillId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      if (data.addedToStock) {
+        const bill = CollectionBill.fromJson({ id: docSnap.id, ...data });
+        await removeBillFromStock(bill);
+      }
+    }
+    await deleteDoc(docRef);
     return true;
   } catch (error) {
     console.error('Error deleting collection bill from Firestore:', error);

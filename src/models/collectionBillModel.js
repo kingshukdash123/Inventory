@@ -149,6 +149,7 @@ export class CollectionBill {
         summary = {},
         createdAt = "",
         isDraft = false,
+        addedToStock = false,
     } = {}) {
         this.id = id;
         this.billNo = billNo;
@@ -159,6 +160,7 @@ export class CollectionBill {
         this.summary = summary instanceof CollectionBillSummary ? summary : new CollectionBillSummary(summary);
         this.createdAt = createdAt;
         this.isDraft = isDraft;
+        this.addedToStock = addedToStock;
     }
 
     static fromJson(json = {}) {
@@ -172,6 +174,7 @@ export class CollectionBill {
             summary: CollectionBillSummary.fromJson(json.summary || {}),
             createdAt: json.createdAt?.toDate?.() || json.createdAt || "",
             isDraft: json.isDraft || false,
+            addedToStock: json.addedToStock || false,
         });
     }
 
@@ -185,6 +188,7 @@ export class CollectionBill {
             summary: this.summary.toJson(),
             createdAt: this.createdAt,
             isDraft: this.isDraft,
+            addedToStock: this.addedToStock,
         };
     }
 }

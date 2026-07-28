@@ -13,7 +13,8 @@ import {
   HardDrive,
   UploadCloud,
   Database,
-  AlertCircle
+  AlertCircle,
+  Package
 } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
@@ -26,6 +27,7 @@ export default function CollectionBillsList({
   onDeleteCollectionBill, 
   onOpenAddCollectionBill,
   onPublishDraftCollectionBill,
+  onAddToStock,
   isFetching = false
 }) {
   const [collectionBillMode, setCollectionBillMode] = useState('official'); // 'official' (Published) | 'draft'
@@ -86,7 +88,7 @@ export default function CollectionBillsList({
               onClick={() => setCollectionBillMode('draft')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 collectionBillMode === 'draft'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25'
+                  ? 'bg-zinc-100 text-zinc-950 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
@@ -129,7 +131,7 @@ export default function CollectionBillsList({
         <div className="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-400">Total Store Purchase</span>
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-2 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
@@ -137,7 +139,7 @@ export default function CollectionBillsList({
             {isFetching ? (
               <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse mt-1"></div>
             ) : (
-              <h3 className="text-2xl font-bold text-emerald-400">{formatCurrency(metrics.totalAmount)}</h3>
+              <h3 className="text-2xl font-bold text-zinc-100">{formatCurrency(metrics.totalAmount)}</h3>
             )}
             <p className="text-[11px] text-zinc-500 mt-0.5">Net Payable across published bills</p>
           </div>
@@ -147,7 +149,7 @@ export default function CollectionBillsList({
         <div className="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-400">Total Doctor Rate</span>
-            <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="p-2 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
               <DollarSign className="h-4 w-4" />
             </div>
           </div>
@@ -155,7 +157,7 @@ export default function CollectionBillsList({
             {isFetching ? (
               <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse mt-1"></div>
             ) : (
-              <h3 className="text-2xl font-bold text-sky-300">{formatCurrency(metrics.totalDoctorRate)}</h3>
+              <h3 className="text-2xl font-bold text-zinc-100">{formatCurrency(metrics.totalDoctorRate)}</h3>
             )}
             <p className="text-[11px] text-zinc-500 mt-0.5">Cumulative Doctor Rate sum</p>
           </div>
@@ -165,7 +167,7 @@ export default function CollectionBillsList({
         <div className="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-400">Total Taxes (CGST + SGST)</span>
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <div className="p-2 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
               <Receipt className="h-4 w-4" />
             </div>
           </div>
@@ -173,7 +175,7 @@ export default function CollectionBillsList({
             {isFetching ? (
               <div className="h-7 w-20 bg-zinc-800 rounded animate-pulse mt-1"></div>
             ) : (
-              <h3 className="text-2xl font-bold text-amber-300">
+              <h3 className="text-2xl font-bold text-zinc-100">
                 {formatCurrency(metrics.totalCgst + metrics.totalSgst)}
               </h3>
             )}
@@ -294,12 +296,22 @@ export default function CollectionBillsList({
                       className="hover:bg-zinc-800/40 transition-colors cursor-pointer group"
                     >
                       <td className="py-3.5 px-4 font-mono font-semibold text-zinc-200">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 font-mono">
                           <span>{collectionBill.billNo}</span>
-                          {collectionBillMode === 'draft' && (
+                          {collectionBillMode === 'draft' ? (
                             <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
                               Draft
                             </span>
+                          ) : (
+                            collectionBill.addedToStock ? (
+                              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
+                                Synced
+                              </span>
+                            ) : (
+                              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
+                                Pending
+                              </span>
+                            )
                           )}
                         </div>
                       </td>
@@ -320,7 +332,7 @@ export default function CollectionBillsList({
                           {summary.totalItems || (collectionBill.items || []).length} products
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-sky-300">
+                      <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
                         {formatCurrency(summary.totalDoctorRate)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
@@ -329,7 +341,7 @@ export default function CollectionBillsList({
                       <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
                         {formatCurrency(summary.totalSgst)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-emerald-400 text-sm">
+                      <td className="py-3.5 px-4 text-right font-mono font-semibold text-zinc-200 text-sm">
                         {formatCurrency(summary.grandTotal)}
                       </td>
                       <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -343,7 +355,7 @@ export default function CollectionBillsList({
                           </button>
                           <button
                             onClick={() => onEditCollectionBill(collectionBill, collectionBillMode === 'draft')}
-                            className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-sky-400 transition-colors"
+                            className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
                             title="Edit Bill / Add Items"
                           >
                             <Edit3 className="h-4 w-4" />
@@ -351,10 +363,19 @@ export default function CollectionBillsList({
                           {collectionBillMode === 'draft' && (
                             <button
                               onClick={() => onPublishDraftCollectionBill(collectionBill)}
-                              className="p-1.5 rounded-md hover:bg-emerald-500/10 text-zinc-400 hover:text-emerald-400 transition-colors"
+                              className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
                               title="Publish Bill to Database"
                             >
                               <UploadCloud className="h-4 w-4" />
+                            </button>
+                          )}
+                          {collectionBillMode === 'official' && !collectionBill.addedToStock && (
+                            <button
+                              onClick={() => onAddToStock(collectionBill)}
+                              className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
+                              title="Add items to stock inventory"
+                            >
+                              <Package className="h-4 w-4" />
                             </button>
                           )}
                           <button

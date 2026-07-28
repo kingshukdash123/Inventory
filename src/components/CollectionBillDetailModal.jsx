@@ -1,8 +1,8 @@
 import React from 'react';
-import { X, Building2, Calendar, FileText, Printer, Edit3, Package } from 'lucide-react';
+import { X, Building2, Calendar, FileText, Printer, Edit3, Package, Check } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
-export default function CollectionBillDetailModal({ collectionBill, isOpen, onClose, onEdit }) {
+export default function CollectionBillDetailModal({ collectionBill, isOpen, onClose, onEdit, onAddToStock }) {
   if (!isOpen || !collectionBill) return null;
 
   const summary = collectionBill.summary || {};
@@ -30,11 +30,39 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
                 <span>•</span>
                 <Calendar className="h-3.5 w-3.5 text-zinc-500" />
                 <span>{collectionBill.invoiceDate}</span>
+                {!collectionBill.isDraft && (
+                  <>
+                    <span>•</span>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                      collectionBill.addedToStock 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {collectionBill.addedToStock ? 'Stock Synced' : 'Stock Pending'}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {/* {!collectionBill.isDraft && (
+              collectionBill.addedToStock ? (
+                <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                  <Check className="h-4 w-4" />
+                  <span>Stock Synced</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onAddToStock(collectionBill)}
+                  className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white active:scale-95 text-zinc-950 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md cursor-pointer border border-zinc-200"
+                >
+                  <Package className="h-4 w-4" />
+                  <span>Add to Stock</span>
+                </button>
+              )
+            )} */}
             <button
               onClick={() => {
                 onClose();
@@ -113,12 +141,12 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
                       <td className="py-3 px-4 text-center font-mono font-bold text-zinc-200">{item.quantity}</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-300">₹{item.mrp?.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-300 font-semibold">{item.doctorDisc}%</td>
-                      <td className="py-3 px-4 text-right font-mono text-sky-300 font-semibold">₹{item.doctorRate?.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right font-mono text-zinc-300 font-semibold">₹{item.doctorRate?.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-400">{item.discount}%</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-400">₹{item.cgstAmount?.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-400">₹{item.sgstAmount?.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right font-mono text-zinc-300">₹{item.nettRate?.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-zinc-100">
                         {formatCurrency(item.amount)}
                       </td>
                     </tr>
@@ -139,7 +167,7 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
 
               <div className="flex justify-between text-xs text-zinc-300">
                 <span>Total Doctor Rate:</span>
-                <span className="font-mono font-semibold text-sky-300">{formatCurrency(summary.totalDoctorRate)}</span>
+                <span className="font-mono font-semibold text-zinc-350">{formatCurrency(summary.totalDoctorRate)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
@@ -149,17 +177,17 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
 
               <div className="flex justify-between text-xs text-zinc-300">
                 <span>Total CGST Collected:</span>
-                <span className="font-mono text-amber-300">{formatCurrency(summary.totalCgst)}</span>
+                <span className="font-mono text-zinc-400">{formatCurrency(summary.totalCgst)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
                 <span>Total SGST Collected:</span>
-                <span className="font-mono text-amber-300">{formatCurrency(summary.totalSgst)}</span>
+                <span className="font-mono text-zinc-400">{formatCurrency(summary.totalSgst)}</span>
               </div>
 
               <div className="flex justify-between text-base font-bold text-zinc-100 border-t border-zinc-800 pt-3">
                 <span>Grand Total Net Amount:</span>
-                <span className="font-mono text-emerald-400 text-lg">{formatCurrency(summary.grandTotal)}</span>
+                <span className="font-mono text-zinc-100 text-lg">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>
           </div>

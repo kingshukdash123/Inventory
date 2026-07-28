@@ -15,6 +15,7 @@ import {
   deleteDraftCollectionBillFromLocalStorage,
   publishDraftCollectionBillToFirestore
 } from '../services/collectionBillService';
+import { addBillToStock } from '../services/stockService';
 
 export default function CollectionPage({ searchQuery }) {
   const [officialCollectionBills, setOfficialCollectionBills] = useState([]);
@@ -193,14 +194,55 @@ export default function CollectionPage({ searchQuery }) {
     }
   };
 
+  const handleAddToStock = async (collectionBill) => {
+    const isConfirmed = await triggerConfirm(
+      'Sync to Stock Confirmation',
+      `Are you sure you want to add medicine items from bill ${collectionBill.billNo} to the live stock inventory?`,
+      'info',
+      'Add to Stock'
+    );
+
+    if (!isConfirmed) return;
+
+    try {
+      setIsActionLoading(true);
+      await addBillToStock(collectionBill);
+
+      // Update state in official bills list
+      setOfficialCollectionBills((prev) =>
+        prev.map((b) => (b.id === collectionBill.id ? { ...b, addedToStock: true } : b))
+      );
+
+      // Update selected bill detail state
+      setSelectedCollectionBill((prev) =>
+        prev ? { ...prev, addedToStock: true } : null
+      );
+
+      triggerAlert(
+        'Stock Synchronized',
+        `Successfully added bill ${collectionBill.billNo} medicine items to stock inventory!`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Failed to add bill to stock:', error);
+      triggerAlert(
+        'Synchronization Failed',
+        'An error occurred while adding items to stock. Please check your network connection.',
+        'danger'
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   return (
     <>
       {/* Global Transparent Loader for Async Mutations */}
       {isActionLoading && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px] space-y-3">
           <div className="relative flex items-center justify-center">
-            <Loader2 className="h-10 w-10 text-violet-500 animate-spin" />
-            <div className="absolute h-14 w-14 border border-violet-500/20 rounded-full animate-ping"></div>
+            <Loader2 className="h-10 w-10 text-zinc-100 animate-spin" />
+            <div className="absolute h-14 w-14 border border-zinc-100/20 rounded-full animate-ping"></div>
           </div>
           <span className="text-xs text-zinc-300 font-semibold tracking-wide">Syncing with database...</span>
         </div>
@@ -215,6 +257,7 @@ export default function CollectionPage({ searchQuery }) {
         onDeleteCollectionBill={handleDeleteCollectionBill}
         onOpenAddCollectionBill={handleOpenAddCollectionBill}
         onPublishDraftCollectionBill={handlePublishDraftCollectionBill}
+        onAddToStock={handleAddToStock}
         isFetching={isFetching}
       />
 
@@ -235,6 +278,7 @@ export default function CollectionPage({ searchQuery }) {
         isOpen={!!selectedCollectionBill}
         onClose={() => setSelectedCollectionBill(null)}
         onEdit={(collectionBill) => handleOpenEditCollectionBill(collectionBill, collectionBill.isDraft)}
+        onAddToStock={handleAddToStock}
       />
     </>
   );
