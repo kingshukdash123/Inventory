@@ -55,7 +55,7 @@ export default function CollectionBillsList({
   }, { totalAmount: 0, totalDoctorRate: 0, totalCgst: 0, totalSgst: 0, totalItems: 0 });
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       
       {/* Header Title & Mode Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

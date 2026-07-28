@@ -14,18 +14,31 @@ import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <DialogProvider>
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex font-sans antialiased selection:bg-white selection:text-black">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div 
+            onClick={() => setIsSidebarOpen(false)} 
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden"
+          />
+        )}
+
         {/* Sidebar Navigation */}
-        <Sidebar />
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           <Navbar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
           />
 
           <main className="flex-1 overflow-y-auto">
