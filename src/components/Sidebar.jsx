@@ -30,7 +30,12 @@ export default function Sidebar() {
             <Pill className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="font-semibold text-zinc-100 tracking-tight leading-none text-base">Inventory</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-semibold text-zinc-100 tracking-tight leading-none text-base">Inventory</h1>
+              <span className="text-[11px] font-bold bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded-md font-mono leading-none">
+                v1.0.0
+              </span>
+            </div>
             <span className="text-[11px] text-zinc-500 font-medium">Inventory & Bills</span>
           </div>
         </div>
