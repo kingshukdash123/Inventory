@@ -2,7 +2,7 @@
  * Helper utility for calculating medicine bill line items & aggregated summaries
  * based on the exact TODO specification:
  * 
- * doctor_rate = mrp * (doctor_disc / 100)
+ * doctor_rate = mrp * (100 - doctor_disc) / 100
  * discount_amount = doctor_rate * (discount / 100)
  * taxable_base = doctor_rate - discount_amount
  * cgst_amount = taxable_base * (cgst_percent / 100)
@@ -20,7 +20,7 @@ export function calculateLineItem(item) {
   // If user enters doctorDisc %, calculate doctorRate.
   const doctorRate = Number(item.doctorRate) > 0 
     ? Number(item.doctorRate)
-    : mrp * (doctorDisc / 100);
+    : mrp * (100 - doctorDisc) / 100;
 
   const discountPercent = item.discount !== undefined && item.discount !== '' ? Number(item.discount) : 25;
   const discountAmount = doctorRate * (discountPercent / 100);
