@@ -3,8 +3,6 @@ import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2 } f
 import { calculateLineItem, calculateBillSummary, formatCurrency } from '../utils/calculations';
 
 export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollectionBill, collectionBillToEdit = null }) {
-  if (!isOpen) return null;
-
   const [collectionBillNo, setCollectionBillNo] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
@@ -91,6 +89,26 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   const calculatedItems = items.map(calculateLineItem);
   const summary = calculateBillSummary(calculatedItems);
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+        return;
+      }
+      e.preventDefault();
+      const form = e.currentTarget;
+      const focusable = Array.from(
+        form.querySelectorAll('input:not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])')
+      );
+      const index = focusable.indexOf(e.target);
+      if (index > -1 && index < focusable.length - 1) {
+        focusable[index + 1].focus();
+        if (focusable[index + 1].select) {
+          focusable[index + 1].select();
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e, saveMode = 'firestore') => {
     if (e) e.preventDefault();
 
@@ -124,6 +142,8 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
       <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
@@ -153,7 +173,11 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
         </div>
 
         {/* Modal Body / Form */}
-        <form onSubmit={(e) => handleSubmit(e, 'firestore')} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form 
+          onSubmit={(e) => handleSubmit(e, 'firestore')} 
+          onKeyDown={handleKeyDown}
+          className="flex-1 overflow-y-auto p-6 space-y-6"
+        >
           {errorMessage && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
