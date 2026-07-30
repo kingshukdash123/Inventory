@@ -24,8 +24,8 @@ export function calculateLineItem(item) {
 
   const taxableBase = Math.max(0, doctorRate - discountAmount);
 
-  const cgstPercent = item.cgstPercent !== undefined && item.cgstPercent !== '' ? Number(item.cgstPercent) : 5;
-  const sgstPercent = item.sgstPercent !== undefined && item.sgstPercent !== '' ? Number(item.sgstPercent) : 5;
+  const cgstPercent = item.cgstPercent !== undefined && item.cgstPercent !== '' ? Number(item.cgstPercent) : 2.5;
+  const sgstPercent = item.sgstPercent !== undefined && item.sgstPercent !== '' ? Number(item.sgstPercent) : 2.5;
 
   const cgstAmount = taxableBase * (cgstPercent / 100);
   const sgstAmount = taxableBase * (sgstPercent / 100);

@@ -29,12 +29,12 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
           mrp: '',
           doctorDisc: 50,
           discount: 25,
-          cgstPercent: 5,
-          sgstPercent: 5
+          cgstPercent: 2.5,
+          sgstPercent: 2.5
         }
       ]);
     } else {
-      setCollectionBillNo(`INV-${Date.now().toString().slice(-6)}`);
+      setCollectionBillNo('');
       setSupplierName('');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setNotes('');
@@ -47,8 +47,8 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
           mrp: '',
           doctorDisc: 50,
           discount: 25,
-          cgstPercent: 5,
-          sgstPercent: 5
+          cgstPercent: 2.5,
+          sgstPercent: 2.5
         }
       ]);
     }
@@ -73,8 +73,44 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   // Handle line item field changes
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
-    updated[index] = { ...updated[index], [field]: value };
+    let val = value;
+    if (field === 'itemName' || field === 'batchNo') {
+      val = value.toUpperCase();
+    }
+    updated[index] = { ...updated[index], [field]: val };
     setItems(updated);
+  };
+
+  // Handle expiry date input MM/YY formatting with backspace check
+  const handleExpiryChange = (index, value) => {
+    const prevValue = items[index]?.expiryDate || '';
+    
+    // If user is deleting text, let the default edit take place
+    if (value.length < prevValue.length) {
+      // If deleting the slash itself, delete the preceding month digit too to avoid getting stuck
+      if (prevValue.endsWith('/') && value.length === 2) {
+        handleItemChange(index, 'expiryDate', value.slice(0, 1));
+        return;
+      }
+      handleItemChange(index, 'expiryDate', value);
+      return;
+    }
+
+    // Keep only digits
+    const digits = value.replace(/\D/g, '');
+    let formatted = '';
+
+    if (digits.length > 0) {
+      const month = digits.slice(0, 2);
+      formatted = month;
+
+      if (digits.length >= 2) {
+        const year = digits.slice(2, 4);
+        formatted = `${month}/${year}`;
+      }
+    }
+
+    handleItemChange(index, 'expiryDate', formatted.slice(0, 5));
   };
 
   // Add new empty line item
@@ -89,8 +125,8 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
         mrp: '',
         doctorDisc: 50,
         discount: 25,
-        cgstPercent: 5,
-        sgstPercent: 5
+        cgstPercent: 2.5,
+        sgstPercent: 2.5
       }
     ]);
   };
@@ -261,9 +297,9 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               <input
                 type="text"
                 value={collectionBillNo}
-                onChange={(e) => setCollectionBillNo(e.target.value)}
+                onChange={(e) => setCollectionBillNo(e.target.value.toUpperCase())}
                 required
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
               />
             </div>
 
@@ -274,10 +310,9 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               <input
                 type="text"
                 value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                placeholder="e.g. Cipla / Sun Pharma"
+                onChange={(e) => setSupplierName(e.target.value.toUpperCase())}
                 required
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none uppercase"
               />
             </div>
 
@@ -341,10 +376,9 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             type="text"
                             value={rawItem.itemName}
                             onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                            placeholder="e.g. Paracetamol"
                             data-field="itemName"
                             required
-                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 outline-none"
+                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 outline-none uppercase"
                           />
                         </td>
 
@@ -365,8 +399,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             type="text"
                             value={rawItem.batchNo}
                             onChange={(e) => handleItemChange(index, 'batchNo', e.target.value)}
-                            placeholder="BATCH-12"
-                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 font-mono outline-none"
+                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 font-mono outline-none uppercase"
                           />
                         </td>
 
@@ -375,8 +408,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                           <input
                             type="text"
                             value={rawItem.expiryDate}
-                            onChange={(e) => handleItemChange(index, 'expiryDate', e.target.value)}
-                            placeholder="MM/YY"
+                            onChange={(e) => handleExpiryChange(index, e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 text-center font-mono outline-none"
                           />
                         </td>
@@ -389,7 +421,6 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             min="0"
                             value={rawItem.mrp}
                             onChange={(e) => handleItemChange(index, 'mrp', e.target.value)}
-                            placeholder="0.00"
                             className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 text-right font-mono outline-none"
                           />
                         </td>
@@ -403,7 +434,6 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             max="100"
                             value={rawItem.doctorDisc}
                             onChange={(e) => handleItemChange(index, 'doctorDisc', e.target.value)}
-                            placeholder="50"
                             className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-100 font-bold text-center font-mono outline-none"
                           />
                         </td>
@@ -495,7 +525,6 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional supplier notes or batch details..."
                 rows="4"
                 className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg p-3 text-xs text-zinc-200 outline-none resize-none"
               ></textarea>
