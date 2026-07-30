@@ -16,11 +16,8 @@ export function calculateLineItem(item) {
   const mrp = Number(item.mrp) || 0;
   const doctorDisc = Number(item.doctorDisc) || 0; // % of MRP
   
-  // Calculate Doctor Rate
-  // If user enters doctorDisc %, calculate doctorRate.
-  const doctorRate = Number(item.doctorRate) > 0 
-    ? Number(item.doctorRate)
-    : mrp * (100 - doctorDisc) / 100;
+  // Calculate Doctor Rate dynamically from MRP and Doctor Discount %
+  const doctorRate = mrp * (100 - doctorDisc) / 100;
 
   const discountPercent = item.discount !== undefined && item.discount !== '' ? Number(item.discount) : 25;
   const discountAmount = doctorRate * (discountPercent / 100);
