@@ -468,24 +468,20 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
         {/* Modal Footer */}
         <div className="px-6 py-4 border-t border-zinc-800 bg-zinc-900/60 flex items-center justify-between gap-3">
-          {(!collectionBillToEdit || collectionBillToEdit.isDraft) ? (
-            <button
-              type="button"
-              onClick={(e) => handleSubmit(e, 'local')}
-              disabled={isSubmitting}
-              className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 border border-zinc-800 text-xs font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
-              title="Save as a local draft"
-            >
-              {isSubmitting && submitMode === 'local' ? (
-                <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
-              ) : (
-                <HardDrive className="h-4 w-4 text-zinc-400" />
-              )}
-              <span>{isSubmitting && submitMode === 'local' ? 'Saving Draft...' : 'Save as Draft'}</span>
-            </button>
-          ) : (
-            <div />
-          )}
+          <button
+            type="button"
+            onClick={(e) => handleSubmit(e, 'local')}
+            disabled={isSubmitting}
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-850 text-zinc-300 border border-zinc-800 text-xs font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50"
+            title="Save as a draft bill"
+          >
+            {isSubmitting && submitMode === 'local' ? (
+              <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+            ) : (
+              <HardDrive className="h-4 w-4 text-zinc-400" />
+            )}
+            <span>{isSubmitting && submitMode === 'local' ? 'Saving Draft...' : 'Save Draft'}</span>
+          </button>
 
           <div className="flex items-center gap-3">
             <button

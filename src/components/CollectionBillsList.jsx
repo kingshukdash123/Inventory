@@ -14,7 +14,7 @@ import {
   UploadCloud,
   Database,
   AlertCircle,
-  Package
+  RefreshCw
 } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
@@ -305,11 +305,11 @@ export default function CollectionBillsList({
                           ) : (
                             collectionBill.addedToStock ? (
                               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
-                                Synced
+                                Published
                               </span>
                             ) : (
-                              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
-                                Pending
+                              <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
+                                Sync Failed
                               </span>
                             )
                           )}
@@ -372,12 +372,13 @@ export default function CollectionBillsList({
                           {collectionBillMode === 'official' && !collectionBill.addedToStock && (
                             <button
                               onClick={() => onAddToStock(collectionBill)}
-                              className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
-                              title="Add items to stock inventory"
+                              className="p-1.5 rounded-md hover:bg-zinc-800 text-rose-450 hover:text-rose-350 transition-colors animate-pulse"
+                              title="Sync to Stock (Failed)"
                             >
-                              <Package className="h-4 w-4" />
+                              <RefreshCw className="h-4 w-4" />
                             </button>
                           )}
+
                           <button
                             onClick={() => onDeleteCollectionBill(collectionBill.id, collectionBillMode === 'draft')}
                             className="p-1.5 rounded-md hover:bg-rose-500/10 text-zinc-400 hover:text-rose-400 transition-colors"

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Building2, Calendar, FileText, Printer, Edit3, Package, Check } from 'lucide-react';
+import { X, Building2, Calendar, FileText, Edit3, Package, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
 export default function CollectionBillDetailModal({ collectionBill, isOpen, onClose, onEdit, onAddToStock }) {
@@ -30,15 +30,27 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
                 <span>•</span>
                 <Calendar className="h-3.5 w-3.5 text-zinc-500" />
                 <span>{collectionBill.invoiceDate}</span>
-                {!collectionBill.isDraft && (
+                {!collectionBill.isDraft ? (
+                  collectionBill.addedToStock ? (
+                    <>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                        Published
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-rose-500/10 text-rose-400 border-rose-500/20">
+                        Sync Failed
+                      </span>
+                    </>
+                  )
+                ) : (
                   <>
                     <span>•</span>
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                      collectionBill.addedToStock 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                    }`}>
-                      {collectionBill.addedToStock ? 'Stock Synced' : 'Stock Pending'}
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border bg-amber-500/10 text-amber-400 border-amber-500/20">
+                      Draft
                     </span>
                   </>
                 )}
@@ -47,22 +59,15 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
           </div>
 
           <div className="flex items-center gap-2">
-            {/* {!collectionBill.isDraft && (
-              collectionBill.addedToStock ? (
-                <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-semibold">
-                  <Check className="h-4 w-4" />
-                  <span>Stock Synced</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => onAddToStock(collectionBill)}
-                  className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white active:scale-95 text-zinc-950 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shadow-md cursor-pointer border border-zinc-200"
-                >
-                  <Package className="h-4 w-4" />
-                  <span>Add to Stock</span>
-                </button>
-              )
-            )} */}
+            {!collectionBill.isDraft && !collectionBill.addedToStock && (
+              <button
+                onClick={() => onAddToStock(collectionBill)}
+                className="flex items-center gap-1.5 bg-rose-950/45 hover:bg-rose-900/60 text-rose-400 border border-rose-800/40 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors animate-pulse"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Retry Stock Sync</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 onClose();

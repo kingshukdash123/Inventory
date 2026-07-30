@@ -10,9 +10,6 @@ import {
   updateCollectionBillInFirestore,
   fetchCollectionBillsFromFirestore,
   deleteCollectionBillFromFirestore,
-  getDraftCollectionBillsFromLocalStorage,
-  saveSingleDraftCollectionBill,
-  deleteDraftCollectionBillFromLocalStorage,
   publishDraftCollectionBillToFirestore
 } from '../services/collectionBillService';
 import { addBillToStock } from '../services/stockService';
@@ -28,18 +25,14 @@ export default function CollectionPage({ searchQuery }) {
 
   const { triggerAlert, triggerConfirm } = useDialog();
 
-  // Load Official Bills and Draft Bills on mount
+  // Load Official Bills and Draft Bills on mount from Firestore
   useEffect(() => {
     async function loadData() {
       try {
         setIsFetching(true);
-        // 1. Load Draft Bills from LocalStorage
-        const localDrafts = getDraftCollectionBillsFromLocalStorage();
-        setDraftCollectionBills(localDrafts);
-
-        // 2. Load Official Bills from Cloud Database
         const firestoreBills = await fetchCollectionBillsFromFirestore();
-        setOfficialCollectionBills(firestoreBills);
+        setOfficialCollectionBills(firestoreBills.filter(b => !b.isDraft));
+        setDraftCollectionBills(firestoreBills.filter(b => b.isDraft));
       } catch (error) {
         console.error('Database connection error:', error);
       } finally {
@@ -59,63 +52,75 @@ export default function CollectionPage({ searchQuery }) {
     setIsAddModalOpen(true);
   };
 
-  // Save new bill OR update existing bill
+  // Save new bill OR update existing bill (supports Draft and Published modes directly to Firestore)
   const handleSaveCollectionBill = async (collectionBillData, existingCollectionBillId, saveMode = 'firestore') => {
-    if (saveMode === 'local') {
-      // Save as Draft Bill locally
-      const savedDraft = saveSingleDraftCollectionBill(collectionBillData, existingCollectionBillId);
-      setDraftCollectionBills((prev) => {
-        if (existingCollectionBillId && prev.some(b => b.id === existingCollectionBillId)) {
-          return prev.map(b => (b.id === existingCollectionBillId ? savedDraft : b));
-        }
-        return [savedDraft, ...prev];
-      });
-      if (selectedCollectionBill && selectedCollectionBill.id === existingCollectionBillId) {
-        setSelectedCollectionBill(savedDraft);
+    const isDraft = saveMode === 'local';
+
+    if (!isDraft) {
+      // Ask for confirmation before publishing to database
+      const isConfirmed = await triggerConfirm(
+        'Publish Confirmation',
+        existingCollectionBillId && !collectionBillToEdit?.isDraft
+          ? `Are you sure you want to update and publish changes to bill ${collectionBillData.billNo}?`
+          : `Are you sure you want to save and publish bill ${collectionBillData.billNo} to the Cloud Database? This will add it to your official analytics.`,
+        'info',
+        'Publish Bill'
+      );
+
+      if (!isConfirmed) {
+        throw new Error('Cancelled');
       }
-      return;
     }
 
-    // Ask for confirmation before publishing to database
-    const isConfirmed = await triggerConfirm(
-      'Publish Confirmation',
-      existingCollectionBillId && !collectionBillToEdit?.isDraft
-        ? `Are you sure you want to update and publish changes to bill ${collectionBillData.billNo}?`
-        : `Are you sure you want to save and publish bill ${collectionBillData.billNo} to the Cloud Database? This will add it to your official analytics.`,
-      'info',
-      'Publish Bill'
-    );
-
-    if (!isConfirmed) {
-      throw new Error('Cancelled');
-    }
-
-    // Save as Official Published Bill in Cloud Database
     try {
       setIsActionLoading(true);
-      if (existingCollectionBillId && !collectionBillToEdit?.isDraft) {
-        // Update existing published bill
-        const updated = await updateCollectionBillInFirestore(existingCollectionBillId, collectionBillData);
-        setOfficialCollectionBills((prev) => prev.map((b) => (b.id === existingCollectionBillId ? { ...b, ...updated } : b)));
+      if (existingCollectionBillId) {
+        // Update existing bill (draft or published)
+        const updated = await updateCollectionBillInFirestore(existingCollectionBillId, {
+          ...collectionBillData,
+          isDraft
+        });
+
+        // Update state lists dynamically
+        if (isDraft) {
+          setDraftCollectionBills((prev) => {
+            if (prev.some(b => b.id === existingCollectionBillId)) {
+              return prev.map(b => (b.id === existingCollectionBillId ? updated : b));
+            }
+            return [updated, ...prev];
+          });
+          setOfficialCollectionBills((prev) => prev.filter((b) => b.id !== existingCollectionBillId));
+        } else {
+          setOfficialCollectionBills((prev) => {
+            if (prev.some(b => b.id === existingCollectionBillId)) {
+              return prev.map(b => (b.id === existingCollectionBillId ? updated : b));
+            }
+            return [updated, ...prev];
+          });
+          setDraftCollectionBills((prev) => prev.filter((b) => b.id !== existingCollectionBillId));
+        }
+
         if (selectedCollectionBill && selectedCollectionBill.id === existingCollectionBillId) {
-          setSelectedCollectionBill((prev) => ({ ...prev, ...updated }));
+          setSelectedCollectionBill(updated);
         }
       } else {
-        // Create new published bill (or publish existing draft)
-        const savedBill = await addCollectionBillToFirestore(collectionBillData);
-        setOfficialCollectionBills((prev) => [savedBill, ...prev]);
+        // Create brand new bill (draft or published)
+        const savedBill = await addCollectionBillToFirestore({
+          ...collectionBillData,
+          isDraft
+        });
 
-        // If it was previously a draft, clean it up from drafts
-        if (existingCollectionBillId && collectionBillToEdit?.isDraft) {
-          deleteDraftCollectionBillFromLocalStorage(existingCollectionBillId);
-          setDraftCollectionBills((prev) => prev.filter(b => b.id !== existingCollectionBillId));
+        if (isDraft) {
+          setDraftCollectionBills((prev) => [savedBill, ...prev]);
+        } else {
+          setOfficialCollectionBills((prev) => [savedBill, ...prev]);
         }
       }
     } catch (error) {
       console.error('Database save/update bill failed:', error);
       triggerAlert(
         'Database Write Error',
-        'Failed to save bill to Cloud Database. Please check your internet connection and Firestore Security Rules.',
+        'Failed to save bill to Cloud Database. Please check your internet connection.',
         'danger'
       );
     } finally {
@@ -155,7 +160,7 @@ export default function CollectionPage({ searchQuery }) {
     }
   };
 
-  // Delete bill
+  // Delete bill from Firestore (handles stock subtraction automatically in the service)
   const handleDeleteCollectionBill = async (collectionBillId, isDraft = false) => {
     const isConfirmed = await triggerConfirm(
       'Delete Confirmation',
@@ -166,19 +171,14 @@ export default function CollectionPage({ searchQuery }) {
 
     if (!isConfirmed) return;
 
-    if (isDraft) {
-      deleteDraftCollectionBillFromLocalStorage(collectionBillId);
-      setDraftCollectionBills((prev) => prev.filter((b) => b.id !== collectionBillId));
-      if (selectedCollectionBill && selectedCollectionBill.id === collectionBillId) {
-        setSelectedCollectionBill(null);
-      }
-      return;
-    }
-
     try {
       setIsActionLoading(true);
       await deleteCollectionBillFromFirestore(collectionBillId);
-      setOfficialCollectionBills((prev) => prev.filter((b) => b.id !== collectionBillId));
+      if (isDraft) {
+        setDraftCollectionBills((prev) => prev.filter((b) => b.id !== collectionBillId));
+      } else {
+        setOfficialCollectionBills((prev) => prev.filter((b) => b.id !== collectionBillId));
+      }
       if (selectedCollectionBill && selectedCollectionBill.id === collectionBillId) {
         setSelectedCollectionBill(null);
       }

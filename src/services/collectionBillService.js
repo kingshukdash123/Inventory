@@ -13,115 +13,20 @@ import {
 import { db } from '../config/firebase';
 import { calculateBillSummary, calculateLineItem } from '../utils/calculations';
 import { CollectionBill } from '../models/collectionBillModel';
-import { removeBillFromStock } from './stockService';
+import { addBillToStock, removeBillFromStock } from './stockService';
 
 const COLLECTION_NAME = 'collection_bill';
-const DRAFT_STORAGE_KEY = 'inventory_draft_collection_bills_local';
 
 /**
  * ==========================================
- * DRAFT BILLS (LocalStorage Only - Excluded from Official Analytics)
+ * OFFICIAL & DRAFT BILLS (Firebase Firestore)
  * ==========================================
  */
-export function getDraftCollectionBillsFromLocalStorage() {
-  try {
-    const data = localStorage.getItem(DRAFT_STORAGE_KEY);
-    const parsed = data ? JSON.parse(data) : [];
-    return parsed.map(item => CollectionBill.fromJson(item));
-  } catch (err) {
-    console.error('Error reading draft collection bills from localStorage:', err);
-    return [];
-  }
-}
 
-export function saveDraftCollectionBillsToLocalStorage(draftCollectionBills) {
-  try {
-    const serialized = draftCollectionBills.map(b => {
-      const obj = b instanceof CollectionBill ? b.toJson() : b;
-      return { ...obj, id: b.id };
-    });
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(serialized));
-  } catch (err) {
-    console.error('Error saving draft collection bills to localStorage:', err);
-  }
-}
-
-export function saveSingleDraftCollectionBill(collectionBillData, existingId = null) {
-  const formattedItems = (collectionBillData.items || []).map(calculateLineItem);
-  const summary = calculateBillSummary(formattedItems);
-  const currentDrafts = getDraftCollectionBillsFromLocalStorage();
-
-  const id = existingId || collectionBillData.id || `draft-${Date.now()}`;
-
-  const draftCollectionBill = new CollectionBill({
-    id,
-    billNo: collectionBillData.billNo || `DRAFT-${Date.now().toString().slice(-6)}`,
-    supplierName: collectionBillData.supplierName || 'Draft Supplier',
-    invoiceDate: collectionBillData.invoiceDate || new Date().toISOString().split('T')[0],
-    notes: collectionBillData.notes || '',
-    items: formattedItems,
-    summary: summary,
-    createdAt: collectionBillData.createdAt || new Date().toISOString(),
-    isDraft: true
-  });
-
-  let updatedDrafts;
-  if (existingId && currentDrafts.some(b => b.id === existingId)) {
-    updatedDrafts = currentDrafts.map(b => (b.id === existingId ? draftCollectionBill : b));
-  } else {
-    updatedDrafts = [draftCollectionBill, ...currentDrafts.filter(b => b.id !== id)];
-  }
-
-  saveDraftCollectionBillsToLocalStorage(updatedDrafts);
-  return draftCollectionBill;
-}
-
-export function deleteDraftCollectionBillFromLocalStorage(draftId) {
-  const drafts = getDraftCollectionBillsFromLocalStorage();
-  const filtered = drafts.filter(b => b.id !== draftId);
-  saveDraftCollectionBillsToLocalStorage(filtered);
-  return filtered;
-}
-
-/**
- * Publish a Draft Bill from LocalStorage into Official Firebase Firestore
- */
-export async function publishDraftCollectionBillToFirestore(draftCollectionBill) {
-  const cleanCollectionBill = draftCollectionBill instanceof CollectionBill ? draftCollectionBill : CollectionBill.fromJson(draftCollectionBill);
-
-  // Transform to official collection bill
-  const publishedCollectionBill = new CollectionBill({
-    billNo: cleanCollectionBill.billNo.startsWith('DRAFT-') ? cleanCollectionBill.billNo.replace('DRAFT-', 'INV-') : cleanCollectionBill.billNo,
-    supplierName: cleanCollectionBill.supplierName,
-    invoiceDate: cleanCollectionBill.invoiceDate,
-    notes: cleanCollectionBill.notes || '',
-    items: cleanCollectionBill.items || [],
-    summary: cleanCollectionBill.summary || calculateBillSummary(cleanCollectionBill.items),
-    createdAt: serverTimestamp(),
-    isDraft: false
-  });
-
-  // Push to firebase using toJson
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), publishedCollectionBill.toJson());
-
-  // Clean up from local draft list
-  deleteDraftCollectionBillFromLocalStorage(cleanCollectionBill.id);
-
-  return CollectionBill.fromJson({
-    id: docRef.id,
-    ...publishedCollectionBill.toJson(),
-    createdAt: new Date().toISOString()
-  });
-}
-
-/**
- * ==========================================
- * OFFICIAL BILLS (Firebase Firestore - Contributes to Analytics)
- * ==========================================
- */
 export async function addCollectionBillToFirestore(collectionBillData) {
   const formattedItems = (collectionBillData.items || []).map(calculateLineItem);
   const summary = calculateBillSummary(formattedItems);
+  const isDraft = !!collectionBillData.isDraft;
 
   const collectionBill = new CollectionBill({
     billNo: collectionBillData.billNo || `INV-${Date.now().toString().slice(-6)}`,
@@ -131,11 +36,18 @@ export async function addCollectionBillToFirestore(collectionBillData) {
     items: formattedItems,
     summary: summary,
     createdAt: serverTimestamp(),
-    isDraft: false
+    isDraft: isDraft,
+    addedToStock: false
   });
 
   // Push to Firestore using toJson
   const docRef = await addDoc(collection(db, COLLECTION_NAME), collectionBill.toJson());
+  collectionBill.id = docRef.id;
+
+  if (!isDraft) {
+    await addBillToStock(collectionBill);
+    collectionBill.addedToStock = true;
+  }
 
   return CollectionBill.fromJson({
     id: docRef.id,
@@ -147,6 +59,7 @@ export async function addCollectionBillToFirestore(collectionBillData) {
 export async function updateCollectionBillInFirestore(collectionBillId, collectionBillData) {
   const formattedItems = (collectionBillData.items || []).map(calculateLineItem);
   const summary = calculateBillSummary(formattedItems);
+  const isDraft = !!collectionBillData.isDraft;
 
   const collectionBill = new CollectionBill({
     id: collectionBillId,
@@ -156,8 +69,8 @@ export async function updateCollectionBillInFirestore(collectionBillId, collecti
     notes: collectionBillData.notes || '',
     items: formattedItems,
     summary: summary,
-    isDraft: false,
-    addedToStock: false // Always reset to false on edit/update
+    isDraft: isDraft,
+    addedToStock: false // Will be set below if not draft
   });
 
   const docRef = doc(db, COLLECTION_NAME, collectionBillId);
@@ -170,6 +83,11 @@ export async function updateCollectionBillInFirestore(collectionBillId, collecti
       const oldBill = CollectionBill.fromJson({ id: collectionBillId, ...oldData });
       await removeBillFromStock(oldBill);
     }
+  }
+
+  if (!isDraft) {
+    await addBillToStock(collectionBill);
+    collectionBill.addedToStock = true;
   }
 
   // Build clean payload for update
@@ -185,6 +103,43 @@ export async function updateCollectionBillInFirestore(collectionBillId, collecti
   });
 }
 
+/**
+ * Publish a Draft Bill directly in Firestore
+ */
+export async function publishDraftCollectionBillToFirestore(draftCollectionBill) {
+  const docRef = doc(db, COLLECTION_NAME, draftCollectionBill.id);
+
+  const formattedItems = (draftCollectionBill.items || []).map(calculateLineItem);
+  const summary = calculateBillSummary(formattedItems);
+
+  const publishedCollectionBill = new CollectionBill({
+    id: draftCollectionBill.id,
+    billNo: draftCollectionBill.billNo.startsWith('DRAFT-') ? draftCollectionBill.billNo.replace('DRAFT-', 'INV-') : draftCollectionBill.billNo,
+    supplierName: draftCollectionBill.supplierName,
+    invoiceDate: draftCollectionBill.invoiceDate,
+    notes: draftCollectionBill.notes || '',
+    items: formattedItems,
+    summary: summary,
+    isDraft: false,
+    addedToStock: false // Will be set below
+  });
+
+  // Add to stock
+  await addBillToStock(publishedCollectionBill);
+  publishedCollectionBill.addedToStock = true;
+
+  const payload = publishedCollectionBill.toJson();
+  delete payload.createdAt; // Prevent overwriting original createdAt on update
+
+  await updateDoc(docRef, payload);
+
+  return CollectionBill.fromJson({
+    id: draftCollectionBill.id,
+    ...payload,
+    createdAt: draftCollectionBill.createdAt || new Date().toISOString()
+  });
+}
+
 export async function fetchCollectionBillsFromFirestore() {
   try {
     const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
@@ -192,7 +147,6 @@ export async function fetchCollectionBillsFromFirestore() {
     const collectionBills = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      // Fetch data using fromJson model wrapper
       collectionBills.push(CollectionBill.fromJson({
         id: docSnap.id,
         ...data
