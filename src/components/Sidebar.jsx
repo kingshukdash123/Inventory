@@ -15,8 +15,8 @@ import {
 export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/collection', label: 'Medicine Collection', icon: Receipt, badge: 'Bills' },
-    { path: '/inventory', label: 'Medicine Stock', icon: Package },
+    { path: '/collection_bill', label: 'Medicine Collection', icon: Receipt, badge: 'Bills' },
+    { path: '/stock', label: 'Medicine Stock', icon: Package },
     { path: '/suppliers', label: 'Pharma Suppliers', icon: Users },
     { path: '/analytics', label: 'Tax & Analytics', icon: BarChart3 },
     { path: '/settings', label: 'System Settings', icon: Settings },

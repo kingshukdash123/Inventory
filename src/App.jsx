@@ -47,10 +47,10 @@ export default function App() {
               <Route path="/" element={<DashboardPage />} />
 
               {/* Medicine Collection Page */}
-              <Route path="/collection" element={<CollectionPage searchQuery={searchQuery} />} />
+              <Route path="/collection_bill" element={<CollectionPage searchQuery={searchQuery} />} />
 
               {/* Medicine Stock Page */}
-              <Route path="/inventory" element={<InventoryPage searchQuery={searchQuery} />} />
+              <Route path="/stock" element={<InventoryPage searchQuery={searchQuery} />} />
 
               {/* Pharma Suppliers Page */}
               <Route path="/suppliers" element={<SuppliersPage />} />
