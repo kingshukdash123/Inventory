@@ -533,7 +533,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
             {/* Live Financial Summary Box */}
             <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-4 space-y-2.5">
               <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800 pb-2">
-                Realtime Bill Calculation Summary
+                Bill Summary
               </h5>
 
               <div className="flex justify-between text-xs text-zinc-300">
@@ -542,22 +542,22 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total Discount ({items[0]?.discount || 25}%):</span>
+                <span>Total Discount:</span>
                 <span className="font-mono text-zinc-400">-{formatCurrency(summary.totalDiscount)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total CGST Tax:</span>
+                <span>Total CGST:</span>
                 <span className="font-mono text-zinc-400">{formatCurrency(summary.totalCgst)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total SGST Tax:</span>
+                <span>Total SGST:</span>
                 <span className="font-mono text-zinc-400">{formatCurrency(summary.totalSgst)}</span>
               </div>
 
               <div className="flex justify-between text-sm font-bold text-zinc-100 border-t border-zinc-800 pt-2">
-                <span>Grand Total Amount:</span>
+                <span>Total Amount:</span>
                 <span className="font-mono text-zinc-100 text-base">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>

@@ -167,7 +167,7 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
 
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 space-y-3 shadow-lg">
               <h5 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800 pb-2">
-                Bill Tax & Total Breakdown Summary
+                Bill Summary
               </h5>
 
               <div className="flex justify-between text-xs text-zinc-300">
@@ -176,22 +176,22 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total Doctor Discount Given:</span>
+                <span>Total Discount:</span>
                 <span className="font-mono text-zinc-400">-{formatCurrency(summary.totalDiscount)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total CGST Collected:</span>
+                <span>Total CGST:</span>
                 <span className="font-mono text-zinc-400">{formatCurrency(summary.totalCgst)}</span>
               </div>
 
               <div className="flex justify-between text-xs text-zinc-300">
-                <span>Total SGST Collected:</span>
+                <span>Total SGST:</span>
                 <span className="font-mono text-zinc-400">{formatCurrency(summary.totalSgst)}</span>
               </div>
 
               <div className="flex justify-between text-base font-bold text-zinc-100 border-t border-zinc-800 pt-3">
-                <span>Grand Total Net Amount:</span>
+                <span>Total Amount:</span>
                 <span className="font-mono text-zinc-100 text-lg">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>
