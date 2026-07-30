@@ -14,7 +14,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   const [items, setItems] = useState([]);
   const prevItemsLengthRef = useRef(0);
   const billNoInputRef = useRef(null);
-  
+
   // Autocomplete suggestions states and refs
   const [suggestions, setSuggestions] = useState([]);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
@@ -416,7 +416,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-[95vw] lg:max-w-7xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
         
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
@@ -563,11 +563,10 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                                 <div
                                   key={suggestionName}
                                   onMouseDown={() => handleSelectSuggestion(index, suggestionName)}
-                                  className={`px-3 py-2 text-xs font-semibold uppercase transition-colors cursor-pointer ${
-                                    selectedSuggestionIndex === idx
+                                  className={`px-3 py-2 text-xs font-semibold uppercase transition-colors cursor-pointer ${selectedSuggestionIndex === idx
                                       ? 'bg-zinc-900 text-zinc-100 font-bold'
                                       : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200'
-                                  }`}
+                                    }`}
                                 >
                                   {suggestionName}
                                 </div>
@@ -795,8 +794,8 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                 <Check className="h-4 w-4 text-zinc-950" />
               )}
               <span>
-                {isSubmitting && submitMode === 'firestore' 
-                  ? 'Publishing...' 
+                {isSubmitting && submitMode === 'firestore'
+                  ? 'Publishing...'
                   : collectionBillToEdit ? 'Update & Publish Bill' : 'Save & Publish Bill'}
               </span>
             </button>

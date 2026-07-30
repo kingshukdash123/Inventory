@@ -256,7 +256,7 @@ export default function InventoryPage({ searchQuery = '' }) {
       <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden shadow-xl min-h-[200px] relative">
         {isFetching ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-zinc-300">
+            <table className="w-full text-left text-xs text-zinc-300 min-w-[1300px]">
               <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3.5 px-4">Medicine Product</th>
@@ -266,9 +266,11 @@ export default function InventoryPage({ searchQuery = '' }) {
                   <th className="py-3.5 px-4 text-center">Available Qty</th>
                   <th className="py-3.5 px-4 text-center">Received Qty</th>
                   <th className="py-3.5 px-4 text-right">MRP (₹)</th>
-                  <th className="py-3.5 px-4 text-right">Purchase Rate (₹)</th>
+                  <th className="py-3.5 px-4 text-right">Doc Disc (%)</th>
                   <th className="py-3.5 px-4 text-right">Doc Rate (₹)</th>
-                  <th className="py-3.5 px-4 text-right">Taxes (GST)</th>
+                  <th className="py-3.5 px-4 text-right">Disc (%)</th>
+                  <th className="py-3.5 px-4 text-right">Purchase Rate (₹)</th>
+                  <th className="py-3.5 px-4 text-right min-w-[110px]">Taxes (GST)</th>
                   <th className="py-3.5 px-4 text-right">Last Updated</th>
                 </tr>
               </thead>
@@ -282,9 +284,11 @@ export default function InventoryPage({ searchQuery = '' }) {
                     <td className="py-4 px-4 text-center"><div className="h-5 bg-zinc-800 rounded w-14 mx-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-12 ml-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-12 ml-auto"></div></td>
+                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-10 ml-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-12 ml-auto"></div></td>
-                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-16 ml-auto"></div></td>
-                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-24 ml-auto"></div></td>
+                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-10 ml-auto"></div></td>
+                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-12 ml-auto"></div></td>
+                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-20 ml-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-24 ml-auto"></div></td>
                   </tr>
                 ))}
@@ -307,7 +311,7 @@ export default function InventoryPage({ searchQuery = '' }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-zinc-300">
+            <table className="w-full text-left text-xs text-zinc-300 min-w-[1300px]">
               <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3.5 px-4">Medicine Product</th>
@@ -317,9 +321,11 @@ export default function InventoryPage({ searchQuery = '' }) {
                   <th className="py-3.5 px-4 text-center">Available Qty</th>
                   <th className="py-3.5 px-4 text-center">Received Qty</th>
                   <th className="py-3.5 px-4 text-right">MRP (₹)</th>
-                  <th className="py-3.5 px-4 text-right">Purchase Rate (₹)</th>
+                  <th className="py-3.5 px-4 text-right">Doc Disc (%)</th>
                   <th className="py-3.5 px-4 text-right">Doc Rate (₹)</th>
-                  <th className="py-3.5 px-4 text-right">Taxes (GST)</th>
+                  <th className="py-3.5 px-4 text-right">Disc (%)</th>
+                  <th className="py-3.5 px-4 text-right">Purchase Rate (₹)</th>
+                  <th className="py-3.5 px-4 text-right min-w-[110px]">Taxes (GST)</th>
                   <th className="py-3.5 px-4 text-right">Last Updated</th>
                 </tr>
               </thead>
@@ -383,9 +389,9 @@ export default function InventoryPage({ searchQuery = '' }) {
                         ₹{item.mrp?.toFixed(2)}
                       </td>
 
-                      {/* Purchase Rate */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-200 font-semibold">
-                        ₹{item.purchaseRate?.toFixed(2)}
+                      {/* Doctor Discount */}
+                      <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
+                        {item.doctorDisc || 0}%
                       </td>
 
                       {/* Doctor Rate */}
@@ -393,14 +399,24 @@ export default function InventoryPage({ searchQuery = '' }) {
                         ₹{item.doctorRate?.toFixed(2)}
                       </td>
 
+                      {/* Retailer Discount */}
+                      <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
+                        {item.discount || 0}%
+                      </td>
+
+                      {/* Purchase Rate */}
+                      <td className="py-3.5 px-4 text-right font-mono text-zinc-200 font-semibold">
+                        ₹{item.purchaseRate?.toFixed(2)}
+                      </td>
+
                       {/* CGST + SGST */}
                       <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
                         <div className="flex items-center justify-end gap-1">
                           <Percent className="h-3 w-3 text-zinc-500" />
-                          <span>{(item.cgstPercent + item.sgstPercent).toFixed(1)}%</span>
+                          <span>{((item.cgstPercent || 0) + (item.sgstPercent || 0)).toFixed(1)}%</span>
                         </div>
                         <div className="text-[9px] text-zinc-500">
-                          C: {item.cgstPercent}% | S: {item.sgstPercent}%
+                          C: {item.cgstPercent || 0}% | S: {item.sgstPercent || 0}%
                         </div>
                       </td>
 
