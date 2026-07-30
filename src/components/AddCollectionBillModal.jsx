@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2 } from 'lucide-react';
 import { calculateLineItem, calculateBillSummary, formatCurrency } from '../utils/calculations';
+import { fetchStockItemsFromFirestore } from '../services/stockService';
 
 export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollectionBill, collectionBillToEdit = null }) {
   const [collectionBillNo, setCollectionBillNo] = useState('');
@@ -12,6 +13,36 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   const [errorMessage, setErrorMessage] = useState('');
   const [items, setItems] = useState([]);
   const prevItemsLengthRef = useRef(0);
+  const billNoInputRef = useRef(null);
+  
+  // Autocomplete suggestions states and refs
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const debounceTimeoutRef = useRef(null);
+  const lastFetchedStockRef = useRef([]);
+
+  // Clean up debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Focus Bill No input on modal open
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        if (billNoInputRef.current) {
+          billNoInputRef.current.focus();
+        }
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Sync state when modal opens or collectionBillToEdit changes
   useEffect(() => {
@@ -111,6 +142,142 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
     }
 
     handleItemChange(index, 'expiryDate', formatted.slice(0, 5));
+  };
+
+  // Fetch matching stock items and filter unique medicine names
+  const performSearch = async (queryText) => {
+    if (!queryText || queryText.length < 2) {
+      setSuggestions([]);
+      setIsSearchLoading(false);
+      setSelectedSuggestionIndex(-1);
+      return;
+    }
+
+    try {
+      const allStock = await fetchStockItemsFromFirestore();
+      lastFetchedStockRef.current = allStock;
+
+      const normalizedQuery = queryText.toUpperCase();
+      const matchedNames = new Set();
+      allStock.forEach((item) => {
+        if (item.medicineName.toUpperCase().includes(normalizedQuery)) {
+          matchedNames.add(item.medicineName.toUpperCase());
+        }
+      });
+
+      setSuggestions(Array.from(matchedNames));
+      setSelectedSuggestionIndex(-1);
+    } catch (error) {
+      console.error('Error performing stock search:', error);
+      setSuggestions([]);
+      setSelectedSuggestionIndex(-1);
+    } finally {
+      setIsSearchLoading(false);
+    }
+  };
+
+  // Handle typing inside medicine name field with debouncing
+  const handleItemNameChange = (index, value) => {
+    handleItemChange(index, 'itemName', value);
+    setActiveRowIndex(index);
+    setSelectedSuggestionIndex(-1);
+
+    if (value.length < 2) {
+      setSuggestions([]);
+      setIsSearchLoading(false);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      return;
+    }
+
+    setIsSearchLoading(true);
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      performSearch(value);
+    }, 300);
+  };
+
+  // Handle selecting a suggested medicine name
+  const handleSelectSuggestion = (index, suggestionName) => {
+    const matches = lastFetchedStockRef.current.filter(
+      (item) => item.medicineName.toUpperCase() === suggestionName.toUpperCase()
+    );
+
+    const latestItem = matches.length > 0
+      ? matches.sort((a, b) => {
+          const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return timeB - timeA;
+        })[0]
+      : null;
+
+    const updated = [...items];
+    if (latestItem) {
+      updated[index] = {
+        ...updated[index],
+        itemName: latestItem.medicineName.toUpperCase(),
+        quantity: '', // quantity is empty
+        batchNo: latestItem.batchNo.toUpperCase(),
+        expiryDate: latestItem.expiryDate,
+        mrp: latestItem.mrp || '',
+        doctorDisc: latestItem.doctorDisc || 0,
+        discount: latestItem.discount || 0,
+        cgstPercent: latestItem.cgstPercent || 2.5,
+        sgstPercent: latestItem.sgstPercent || 2.5
+      };
+    } else {
+      updated[index].itemName = suggestionName.toUpperCase();
+    }
+
+    setItems(updated);
+    setActiveRowIndex(null);
+    setSuggestions([]);
+    setSelectedSuggestionIndex(-1);
+  };
+
+  // Handle input blur to close suggestions dropdown
+  const handleInputBlur = () => {
+    setTimeout(() => {
+      setActiveRowIndex(null);
+      setSuggestions([]);
+      setSelectedSuggestionIndex(-1);
+    }, 200);
+  };
+
+  // Handle custom key navigation for medicine name dropdown suggestions
+  const handleItemNameKeyDown = (e, index) => {
+    if (activeRowIndex !== index || suggestions.length === 0) {
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedSuggestionIndex((prev) => 
+        prev < suggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedSuggestionIndex((prev) => 
+        prev > 0 ? prev - 1 : -1
+      );
+    } else if (e.key === 'Enter') {
+      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSelectSuggestion(index, suggestions[selectedSuggestionIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveRowIndex(null);
+      setSuggestions([]);
+      setSelectedSuggestionIndex(-1);
+    }
   };
 
   // Add new empty line item
@@ -295,6 +462,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                 Bill No <span className="text-zinc-500">*</span>
               </label>
               <input
+                ref={billNoInputRef}
                 type="text"
                 value={collectionBillNo}
                 onChange={(e) => setCollectionBillNo(e.target.value.toUpperCase())}
@@ -346,7 +514,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
               </button>
             </div>
 
-            <div className="border border-zinc-800 rounded-xl overflow-x-auto bg-zinc-900/40">
+            <div className="border border-zinc-800 rounded-xl overflow-visible bg-zinc-900/40">
               <table className="w-full text-left text-xs">
                 <thead className="bg-zinc-950 text-zinc-400 uppercase text-[10px] tracking-wider border-b border-zinc-800 font-semibold">
                   <tr>
@@ -371,15 +539,41 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                     return (
                       <tr key={index} className="hover:bg-zinc-900/80 transition-colors">
                         {/* Medicine Name */}
-                        <td className="p-2">
-                          <input
-                            type="text"
-                            value={rawItem.itemName}
-                            onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                            data-field="itemName"
-                            required
-                            className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 outline-none uppercase"
-                          />
+                        <td className="p-2 relative">
+                          <div className="relative flex items-center w-full">
+                            <input
+                              type="text"
+                              value={rawItem.itemName}
+                              onChange={(e) => handleItemNameChange(index, e.target.value)}
+                              onBlur={handleInputBlur}
+                              onKeyDown={(e) => handleItemNameKeyDown(e, index)}
+                              data-field="itemName"
+                              required
+                              className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 pr-7 text-xs text-zinc-200 outline-none uppercase"
+                            />
+                            {isSearchLoading && activeRowIndex === index && (
+                              <div className="absolute right-2 flex items-center justify-center pointer-events-none">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500" />
+                              </div>
+                            )}
+                          </div>
+                          {activeRowIndex === index && suggestions.length > 0 && (
+                            <div className="absolute left-2 right-2 mt-1 max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 divide-y divide-zinc-900 select-none">
+                              {suggestions.map((suggestionName, idx) => (
+                                <div
+                                  key={suggestionName}
+                                  onMouseDown={() => handleSelectSuggestion(index, suggestionName)}
+                                  className={`px-3 py-2 text-xs font-semibold uppercase transition-colors cursor-pointer ${
+                                    selectedSuggestionIndex === idx
+                                      ? 'bg-zinc-900 text-zinc-100 font-bold'
+                                      : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200'
+                                  }`}
+                                >
+                                  {suggestionName}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </td>
 
                         {/* Quantity */}
