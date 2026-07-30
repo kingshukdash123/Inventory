@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2 } from 'lucide-react';
 import { calculateLineItem, calculateBillSummary, formatCurrency } from '../utils/calculations';
 
@@ -11,6 +11,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   const [submitMode, setSubmitMode] = useState(''); // 'local' | 'firestore'
   const [errorMessage, setErrorMessage] = useState('');
   const [items, setItems] = useState([]);
+  const prevItemsLengthRef = useRef(0);
 
   // Sync state when modal opens or collectionBillToEdit changes
   useEffect(() => {
@@ -54,6 +55,21 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
     setErrorMessage('');
   }, [collectionBillToEdit, isOpen]);
 
+  // Auto-focus the last added item row's name field when a new row is appended
+  useEffect(() => {
+    if (items.length > prevItemsLengthRef.current) {
+      const nameInputs = document.querySelectorAll('input[data-field="itemName"]');
+      if (nameInputs.length > 0) {
+        const lastInput = nameInputs[nameInputs.length - 1];
+        lastInput.focus();
+        if (lastInput.select) {
+          lastInput.select();
+        }
+      }
+    }
+    prevItemsLengthRef.current = items.length;
+  }, [items]);
+
   // Handle line item field changes
   const handleItemChange = (index, field, value) => {
     const updated = [...items];
@@ -90,17 +106,68 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
   const summary = calculateBillSummary(calculatedItems);
 
   const handleKeyDown = (e) => {
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+      return;
+    }
+
+    const form = e.currentTarget;
+    const focusable = Array.from(
+      form.querySelectorAll('input:not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])')
+    );
+    const index = focusable.indexOf(e.target);
+
     if (e.key === 'Enter') {
-      if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
-        return;
+      // If pressing Enter in the last row's SGST input, add a new row and focus it
+      if (e.target.getAttribute('data-field') === 'sgstPercent') {
+        const sgstInputs = Array.from(document.querySelectorAll('input[data-field="sgstPercent"]'));
+        const sgstIndex = sgstInputs.indexOf(e.target);
+        if (sgstIndex === sgstInputs.length - 1) {
+          e.preventDefault();
+          handleAddItemRow();
+          return;
+        }
       }
+
       e.preventDefault();
-      const form = e.currentTarget;
-      const focusable = Array.from(
-        form.querySelectorAll('input:not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])')
-      );
-      const index = focusable.indexOf(e.target);
       if (index > -1 && index < focusable.length - 1) {
+        focusable[index + 1].focus();
+        if (focusable[index + 1].select) {
+          focusable[index + 1].select();
+        }
+      }
+    }
+
+    if (e.key === 'ArrowLeft') {
+      let isCursorAtStart = true;
+      try {
+        if (e.target.selectionStart !== null) {
+          isCursorAtStart = e.target.selectionStart === 0 && e.target.selectionEnd === 0;
+        }
+      } catch {
+        // Selection properties are not supported (e.g. input type="number" or type="date")
+        isCursorAtStart = true;
+      }
+      if (isCursorAtStart && index > 0) {
+        e.preventDefault();
+        focusable[index - 1].focus();
+        if (focusable[index - 1].select) {
+          focusable[index - 1].select();
+        }
+      }
+    }
+
+    if (e.key === 'ArrowRight') {
+      let isCursorAtEnd = true;
+      try {
+        if (e.target.selectionStart !== null) {
+          isCursorAtEnd = e.target.selectionStart === e.target.value.length && e.target.selectionEnd === e.target.value.length;
+        }
+      } catch {
+        // Selection properties are not supported (e.g. input type="number" or type="date")
+        isCursorAtEnd = true;
+      }
+      if (isCursorAtEnd && index > -1 && index < focusable.length - 1) {
+        e.preventDefault();
         focusable[index + 1].focus();
         if (focusable[index + 1].select) {
           focusable[index + 1].select();
@@ -275,6 +342,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             value={rawItem.itemName}
                             onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
                             placeholder="e.g. Paracetamol"
+                            data-field="itemName"
                             required
                             className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 outline-none"
                           />
@@ -380,6 +448,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
                             min="0"
                             value={rawItem.sgstPercent}
                             onChange={(e) => handleItemChange(index, 'sgstPercent', e.target.value)}
+                            data-field="sgstPercent"
                             className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded px-2 py-1 text-xs text-zinc-200 text-center font-mono outline-none"
                           />
                         </td>
