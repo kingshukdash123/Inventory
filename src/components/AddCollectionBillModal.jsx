@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2 } from 'lucide-react';
 import { calculateLineItem, calculateBillSummary, formatCurrency } from '../utils/calculations';
 import { fetchStockItemsFromFirestore } from '../services/stockService';
@@ -44,8 +44,14 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
     }
   }, [isOpen]);
 
-  // Sync state when modal opens or collectionBillToEdit changes
-  useEffect(() => {
+  // Track previous prop references to sync form state without cascading effect renders
+  const [prevEditBill, setPrevEditBill] = useState(collectionBillToEdit);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (isOpen !== prevIsOpen || collectionBillToEdit !== prevEditBill) {
+    setPrevIsOpen(isOpen);
+    setPrevEditBill(collectionBillToEdit);
+
     if (collectionBillToEdit) {
       setCollectionBillNo(collectionBillToEdit.billNo || '');
       setSupplierName(collectionBillToEdit.supplierName || '');
@@ -84,7 +90,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
       ]);
     }
     setErrorMessage('');
-  }, [collectionBillToEdit, isOpen]);
+  }
 
   // Auto-focus the last added item row's name field when a new row is appended
   useEffect(() => {
@@ -320,15 +326,31 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
     const index = focusable.indexOf(e.target);
 
     if (e.key === 'Enter') {
-      // If pressing Enter in the last row's SGST input, add a new row and focus it
-      if (e.target.getAttribute('data-field') === 'sgstPercent') {
-        const sgstInputs = Array.from(document.querySelectorAll('input[data-field="sgstPercent"]'));
-        const sgstIndex = sgstInputs.indexOf(e.target);
-        if (sgstIndex === sgstInputs.length - 1) {
-          e.preventDefault();
+      // If pressing Enter on any field of a product: go to next row, or add one product if no next row
+      const productRow = e.target.closest('tbody tr');
+      if (productRow) {
+        e.preventDefault();
+        setActiveRowIndex(null);
+        setSuggestions([]);
+        setSelectedSuggestionIndex(-1);
+
+        const tbody = productRow.closest('tbody');
+        const allRows = Array.from(tbody.querySelectorAll('tr'));
+        const rowIndex = allRows.indexOf(productRow);
+
+        if (rowIndex === allRows.length - 1) {
           handleAddItemRow();
-          return;
+        } else {
+          const nextRow = allRows[rowIndex + 1];
+          const nextInput = nextRow.querySelector('input[data-field="itemName"]') || nextRow.querySelector('input');
+          if (nextInput) {
+            nextInput.focus();
+            if (nextInput.select) {
+              nextInput.select();
+            }
+          }
         }
+        return;
       }
 
       e.preventDefault();
@@ -336,6 +358,43 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
         focusable[index + 1].focus();
         if (focusable[index + 1].select) {
           focusable[index + 1].select();
+        }
+      }
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const productRow = e.target.closest('tbody tr');
+      if (productRow) {
+        const tbody = productRow.closest('tbody');
+        const allRows = Array.from(tbody.querySelectorAll('tr'));
+        const rowIndex = allRows.indexOf(productRow);
+
+        if (rowIndex > -1) {
+          const targetRowIndex = e.key === 'ArrowDown' ? rowIndex + 1 : rowIndex - 1;
+
+          if (targetRowIndex >= 0 && targetRowIndex < allRows.length) {
+            e.preventDefault();
+            setActiveRowIndex(null);
+            setSuggestions([]);
+            setSelectedSuggestionIndex(-1);
+
+            const targetRow = allRows[targetRowIndex];
+            const currentRowInputs = Array.from(productRow.querySelectorAll('input:not([disabled]):not([readonly])'));
+            const targetRowInputs = Array.from(targetRow.querySelectorAll('input:not([disabled]):not([readonly])'));
+            const currentInputIndex = currentRowInputs.indexOf(e.target);
+
+            const targetInput = (currentInputIndex > -1 && targetRowInputs[currentInputIndex])
+              ? targetRowInputs[currentInputIndex]
+              : (targetRow.querySelector('input[data-field="itemName"]') || targetRowInputs[0]);
+
+            if (targetInput) {
+              targetInput.focus();
+              if (targetInput.select) {
+                targetInput.select();
+              }
+            }
+            return;
+          }
         }
       }
     }
@@ -435,7 +494,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
           </div>
 
           <button
-            onClick={onClose}
+              onClick={onClose}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
           >
             <X className="h-5 w-5" />

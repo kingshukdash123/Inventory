@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Receipt, 
   Eye, 
@@ -34,14 +34,36 @@ export default function CollectionBillsList({
 
   const currentCollectionBills = collectionBillMode === 'official' ? officialCollectionBills : draftCollectionBills;
 
-  // Filter logic
-  const filteredCollectionBills = currentCollectionBills.filter((collectionBill) => {
-    return (
-      (collectionBill.billNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (collectionBill.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (collectionBill.items || []).some(item => (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  });
+  // Filter and sort logic (latest bills first)
+  const getBillTimestamp = (bill) => {
+    if (bill.createdAt) {
+      if (typeof bill.createdAt?.toDate === 'function') {
+        return bill.createdAt.toDate().getTime();
+      }
+      if (typeof bill.createdAt === 'string') {
+        const parsed = new Date(bill.createdAt).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      if (bill.createdAt instanceof Date) {
+        return bill.createdAt.getTime();
+      }
+    }
+    if (bill.invoiceDate) {
+      const parsed = new Date(bill.invoiceDate).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const filteredCollectionBills = currentCollectionBills
+    .filter((collectionBill) => {
+      return (
+        (collectionBill.billNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (collectionBill.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (collectionBill.items || []).some(item => (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    })
+    .sort((a, b) => getBillTimestamp(b) - getBillTimestamp(a));
 
   // Calculate Dashboard Metrics strictly for Published Bills
   const metrics = officialCollectionBills.reduce((acc, collectionBill) => {
@@ -81,7 +103,7 @@ export default function CollectionBillsList({
               }`}
             >
               <Database className="h-3.5 w-3.5" />
-              <span>Published Bills ({officialCollectionBills.length})</span>
+              <span>Saved Bills ({officialCollectionBills.length})</span>
             </button>
 
             <button
@@ -112,7 +134,7 @@ export default function CollectionBillsList({
         {/* Total Bills */}
         <div className="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-zinc-400">Published Bills</span>
+            <span className="text-xs font-medium text-zinc-400">Saved Bills</span>
             <div className="p-2 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/60">
               <FileText className="h-4 w-4" />
             </div>
@@ -141,7 +163,7 @@ export default function CollectionBillsList({
             ) : (
               <h3 className="text-2xl font-bold text-zinc-100">{formatCurrency(metrics.totalAmount)}</h3>
             )}
-            <p className="text-[11px] text-zinc-500 mt-0.5">Net Payable across published bills</p>
+            <p className="text-[11px] text-zinc-500 mt-0.5">Net Payable across saved bills</p>
           </div>
         </div>
 
@@ -192,7 +214,7 @@ export default function CollectionBillsList({
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
             <span>
-              <strong>Draft Bills Mode:</strong> These draft bills are stored locally and are <strong>excluded</strong> from store analytics until published.
+              <strong>Draft Mode:</strong> These draft bills are saved locally and are <strong>excluded</strong> from store analytics until saved.
             </span>
           </div>
           <span className="text-[11px] bg-amber-500/20 px-2 py-0.5 rounded font-mono font-medium text-amber-200">
@@ -207,12 +229,12 @@ export default function CollectionBillsList({
           {collectionBillMode === 'official' ? (
             <>
               <Database className="h-4 w-4 text-zinc-400" />
-              Published Bills Directory
+              Saved Bills Directory
             </>
           ) : (
             <>
               <HardDrive className="h-4 w-4 text-amber-400" />
-              Draft Bills Directory (Unpublished)
+              Draft Bills Directory
             </>
           )}
         </span>
@@ -224,9 +246,9 @@ export default function CollectionBillsList({
       {/* Bills Table Card */}
       <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden shadow-xl min-h-[200px] relative">
         {isFetching ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[250px] relative">
             <table className="w-full text-left text-xs text-zinc-300">
-              <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[11px]">
+              <thead className="bg-zinc-950 sticky top-0 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[11px] z-10">
                 <tr>
                   <th className="py-3.5 px-4">Bill No</th>
                   <th className="py-3.5 px-4">Pharma Supplier</th>
@@ -262,18 +284,18 @@ export default function CollectionBillsList({
               {collectionBillMode === 'official' ? <Database className="h-6 w-6" /> : <HardDrive className="h-6 w-6" />}
             </div>
             <h4 className="text-sm font-semibold text-zinc-300">
-              {collectionBillMode === 'official' ? 'No Published Bills' : 'No Draft Bills'}
+              {collectionBillMode === 'official' ? 'No Saved Bills' : 'No Draft Bills'}
             </h4>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+            <p className="text-xs text-zinc-550 max-w-sm mx-auto">
               {collectionBillMode === 'official' 
-                ? 'No published bills saved yet. Click "Collect New Bill" to create and publish one.'
-                : 'No draft bills saved yet. Click "Save as Draft" in the bill form to create drafts.'}
+                ? 'No saved bills yet. Click "Collect New Bill" to create one.'
+                : 'No draft bills saved yet. Click "Save Draft" in the bill form to create drafts.'}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-320px)] min-h-[250px] relative">
             <table className="w-full text-left text-xs text-zinc-300">
-              <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[11px]">
+              <thead className="bg-zinc-950 sticky top-0 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[11px] z-10">
                 <tr>
                   <th className="py-3.5 px-4">Bill No</th>
                   <th className="py-3.5 px-4">Pharma Supplier</th>
@@ -305,11 +327,11 @@ export default function CollectionBillsList({
                           ) : (
                             collectionBill.addedToStock ? (
                               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
-                                Published
+                                Saved
                               </span>
                             ) : (
                               <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] px-1.5 py-0.2 rounded font-sans">
-                                Sync Failed
+                                Save Failed
                               </span>
                             )
                           )}
@@ -364,7 +386,7 @@ export default function CollectionBillsList({
                             <button
                               onClick={() => onPublishDraftCollectionBill(collectionBill)}
                               className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors"
-                              title="Publish Bill to Database"
+                              title="Save Bill"
                             >
                               <UploadCloud className="h-4 w-4" />
                             </button>
@@ -373,7 +395,7 @@ export default function CollectionBillsList({
                             <button
                               onClick={() => onAddToStock(collectionBill)}
                               className="p-1.5 rounded-md hover:bg-zinc-800 text-rose-450 hover:text-rose-350 transition-colors animate-pulse"
-                              title="Sync to Stock (Failed)"
+                              title="Save to Stock (Failed)"
                             >
                               <RefreshCw className="h-4 w-4" />
                             </button>

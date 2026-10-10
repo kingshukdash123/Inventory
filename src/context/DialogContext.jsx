@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import CustomDialog from '../components/CustomDialog';
 
 const DialogContext = createContext(null);
@@ -75,6 +75,7 @@ export function DialogProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDialog() {
   const context = useContext(DialogContext);
   if (!context) {

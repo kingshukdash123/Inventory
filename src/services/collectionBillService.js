@@ -7,8 +7,8 @@ import {
   deleteDoc,
   doc,
   query,
-  orderBy,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateBillSummary, calculateLineItem } from '../utils/calculations';
@@ -140,9 +140,25 @@ export async function publishDraftCollectionBillToFirestore(draftCollectionBill)
   });
 }
 
+const getBillTime = (bill) => {
+  if (bill.createdAt) {
+    if (typeof bill.createdAt?.toDate === 'function') return bill.createdAt.toDate().getTime();
+    if (typeof bill.createdAt === 'string') {
+      const t = new Date(bill.createdAt).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (bill.createdAt instanceof Date) return bill.createdAt.getTime();
+  }
+  if (bill.invoiceDate) {
+    const t = new Date(bill.invoiceDate).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+};
+
 export async function fetchCollectionBillsFromFirestore() {
   try {
-    const q = query(collection(db, COLLECTION_NAME), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, COLLECTION_NAME));
     const querySnapshot = await getDocs(q);
     const collectionBills = [];
     querySnapshot.forEach((docSnap) => {
@@ -152,11 +168,33 @@ export async function fetchCollectionBillsFromFirestore() {
         ...data
       }));
     });
+    collectionBills.sort((a, b) => getBillTime(b) - getBillTime(a));
     return collectionBills;
   } catch (error) {
     console.error('Firestore fetch error:', error);
     return [];
   }
+}
+
+/**
+ * Real-time listener for collection bills
+ */
+export function subscribeCollectionBills(onUpdate) {
+  const q = query(collection(db, COLLECTION_NAME));
+  return onSnapshot(q, (querySnapshot) => {
+    const collectionBills = [];
+    querySnapshot.forEach((docSnap) => {
+      collectionBills.push(CollectionBill.fromJson({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+    });
+    collectionBills.sort((a, b) => getBillTime(b) - getBillTime(a));
+    onUpdate(collectionBills);
+  }, (error) => {
+    console.error('Error in collection bills realtime subscription:', error);
+    onUpdate([]);
+  });
 }
 
 export async function deleteCollectionBillFromFirestore(collectionBillId) {

@@ -1,5 +1,4 @@
-import React from 'react';
-import { AlertTriangle, X, Check, Info } from 'lucide-react';
+import { AlertTriangle, Check, Info } from 'lucide-react';
 
 export default function CustomDialog({ 
   isOpen, 

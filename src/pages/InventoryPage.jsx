@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Search, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent } from 'lucide-react';
-import { fetchStockItemsFromFirestore } from '../services/stockService';
+import { useState, useEffect } from 'react';
+import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent } from 'lucide-react';
+import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
 import { formatCurrency } from '../utils/calculations';
 
 export default function InventoryPage({ searchQuery = '' }) {
   const [stockItems, setStockItems] = useState([]);
-  const [isFetching, setIsFetching] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'instock' | 'lowstock' | 'outofstock'
 
   // Fetch stock items from Firestore
@@ -21,31 +21,51 @@ export default function InventoryPage({ searchQuery = '' }) {
     }
   };
 
+  // Load data on mount: parallel initial load to show skeleton, followed by real-time sync
   useEffect(() => {
-    loadStock();
+    async function initData() {
+      try {
+        setIsFetching(true);
+        const data = await fetchStockItemsFromFirestore();
+        setStockItems(data);
+      } catch (error) {
+        console.error('Error on initial inventory load:', error);
+      } finally {
+        setIsFetching(false);
+      }
+    }
+
+    initData();
+
+    const unsubscribe = subscribeStockItems(setStockItems);
+    return () => unsubscribe();
   }, []);
 
   // Filter items based on search query (medicine name or batch number) and status filter
-  const filteredItems = stockItems.filter((item) => {
-    // 1. Search Query filter
-    const matchesSearch = 
-      (item.medicineName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.batchNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // 2. Status Filter
-    if (!matchesSearch) return false;
-    
-    if (statusFilter === 'instock') {
-      return item.availableQuantity >= 10;
-    } else if (statusFilter === 'lowstock') {
-      return item.availableQuantity > 0 && item.availableQuantity < 10;
-    } else if (statusFilter === 'outofstock') {
-      return item.availableQuantity === 0;
-    }
-    
-    return true;
-  });
+  const filteredItems = stockItems
+    .filter((item) => {
+      // 1. Search Query filter
+      const matchesSearch = 
+        (item.medicineName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.batchNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // 2. Status Filter
+      if (!matchesSearch) return false;
+      
+      if (statusFilter === 'instock') {
+        return item.availableQuantity >= 10;
+      } else if (statusFilter === 'lowstock') {
+        return item.availableQuantity > 0 && item.availableQuantity < 10;
+      } else if (statusFilter === 'outofstock') {
+        return item.availableQuantity === 0;
+      }
+      
+      return true;
+    })
+    .sort((a, b) =>
+      (a.medicineName || '').localeCompare(b.medicineName || '', undefined, { sensitivity: 'base' })
+    );
 
   // Calculate Metrics
   const totalUniqueMedicines = new Set(stockItems.map(item => item.medicineName?.toLowerCase())).size;
@@ -255,11 +275,11 @@ export default function InventoryPage({ searchQuery = '' }) {
       {/* Stock Table Card */}
       <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl overflow-hidden shadow-xl min-h-[200px] relative">
         {isFetching ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-360px)] min-h-[250px] relative">
             <table className="w-full text-left text-xs text-zinc-300 min-w-[1300px]">
-              <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px]">
+              <thead className="bg-zinc-950 sticky top-0 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px] z-10">
                 <tr>
-                  <th className="py-3.5 px-4">Medicine Product</th>
+                  <th className="py-3.5 px-4 min-w-[220px]">Medicine Product</th>
                   <th className="py-3.5 px-4">Supplier</th>
                   <th className="py-3.5 px-4 text-center">Batch No</th>
                   <th className="py-3.5 px-4 text-center">Expiry</th>
@@ -277,7 +297,7 @@ export default function InventoryPage({ searchQuery = '' }) {
               <tbody className="divide-y divide-zinc-800/60">
                 {[...Array(5)].map((_, index) => (
                   <tr key={index} className="animate-pulse">
-                    <td className="py-4 px-4"><div className="h-3.5 bg-zinc-800 rounded w-44"></div></td>
+                    <td className="py-4 px-4 min-w-[220px]"><div className="h-3.5 bg-zinc-800 rounded w-48"></div></td>
                     <td className="py-4 px-4 text-center"><div className="h-5 bg-zinc-800 rounded w-16 mx-auto"></div></td>
                     <td className="py-4 px-4 text-center"><div className="h-3.5 bg-zinc-800 rounded w-12 mx-auto"></div></td>
                     <td className="py-4 px-4 text-center"><div className="h-5 bg-zinc-800 rounded w-14 mx-auto"></div></td>
@@ -310,11 +330,11 @@ export default function InventoryPage({ searchQuery = '' }) {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-360px)] min-h-[250px] relative">
             <table className="w-full text-left text-xs text-zinc-300 min-w-[1300px]">
-              <thead className="bg-zinc-950/90 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px]">
+              <thead className="bg-zinc-950 sticky top-0 text-zinc-400 font-semibold border-b border-zinc-800 uppercase tracking-wider text-[10px] z-10">
                 <tr>
-                  <th className="py-3.5 px-4">Medicine Product</th>
+                  <th className="py-3.5 px-4 min-w-[220px]">Medicine Product</th>
                   <th className="py-3.5 px-4">Supplier</th>
                   <th className="py-3.5 px-4 text-center">Batch No</th>
                   <th className="py-3.5 px-4 text-center">Expiry</th>
@@ -340,7 +360,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                       className="hover:bg-zinc-800/40 transition-colors border-b border-zinc-800/60"
                     >
                       {/* Name */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 min-w-[220px]">
                         <div className="font-semibold text-zinc-100 text-sm">{item.medicineName}</div>
                       </td>
                       <td className="py-3.5 px-4">
@@ -370,18 +390,18 @@ export default function InventoryPage({ searchQuery = '' }) {
                           </span>
                         ) : isLow ? (
                           <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
-                            {item.availableQuantity} units (Low)
+                            {item.availableQuantity} (Low)
                           </span>
                         ) : (
                           <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
-                            {item.availableQuantity} units
+                            {item.availableQuantity}
                           </span>
                         )}
                       </td>
 
                       {/* Received Qty */}
                       <td className="py-3.5 px-4 text-center font-mono text-zinc-400">
-                        {item.receivedQuantity} units
+                        {item.receivedQuantity}
                       </td>
 
                       {/* MRP */}

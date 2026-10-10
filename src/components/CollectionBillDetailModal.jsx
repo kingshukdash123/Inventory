@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Building2, Calendar, FileText, Edit3, Package, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
@@ -115,9 +114,9 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
               Collected Medicines Line Items ({items.length})
             </h4>
 
-            <div className="border border-zinc-800 rounded-xl overflow-x-auto bg-zinc-900/40">
+            <div className="border border-zinc-800 rounded-xl overflow-auto max-h-[300px] bg-zinc-900/40 relative">
               <table className="w-full text-left text-xs text-zinc-300">
-                <thead className="bg-zinc-950 text-zinc-400 font-semibold border-b border-zinc-800 uppercase text-[10px] tracking-wider">
+                <thead className="bg-zinc-950 sticky top-0 text-zinc-400 font-semibold border-b border-zinc-800 uppercase text-[10px] tracking-wider z-10">
                   <tr>
                     <th className="py-3 px-4">#</th>
                     <th className="py-3 px-4">Medicine Item Name</th>

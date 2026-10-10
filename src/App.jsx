@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -7,6 +7,8 @@ import { DialogProvider } from './context/DialogContext';
 // Page Components
 import DashboardPage from './pages/DashboardPage';
 import CollectionPage from './pages/CollectionPage';
+import SellingPage from './pages/SellingPage';
+import PaymentCollectionPage from './pages/PaymentCollectionPage';
 import InventoryPage from './pages/InventoryPage';
 import SuppliersPage from './pages/SuppliersPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -15,10 +17,11 @@ import SettingsPage from './pages/SettingsPage';
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <DialogProvider>
-      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex font-sans antialiased selection:bg-white selection:text-black">
+      <div className="h-screen w-screen bg-zinc-950 text-zinc-100 flex font-sans antialiased selection:bg-white selection:text-black overflow-hidden">
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
           <div 
@@ -31,10 +34,12 @@ export default function App() {
         <Sidebar 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           <Navbar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -48,6 +53,12 @@ export default function App() {
 
               {/* Medicine Collection Page */}
               <Route path="/collection_bill" element={<CollectionPage searchQuery={searchQuery} />} />
+
+              {/* Medicine Selling Page */}
+              <Route path="/selling_bill" element={<SellingPage searchQuery={searchQuery} />} />
+
+              {/* Doctor Payment Collection Page */}
+              <Route path="/payments" element={<PaymentCollectionPage />} />
 
               {/* Medicine Stock Page */}
               <Route path="/stock" element={<InventoryPage searchQuery={searchQuery} />} />

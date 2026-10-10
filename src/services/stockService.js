@@ -7,7 +7,8 @@ import {
   doc,
   query,
   where,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { StockItem } from '../models/stockItemModel';
@@ -29,11 +30,37 @@ export async function fetchStockItemsFromFirestore() {
         ...data
       }));
     });
+    stockItems.sort((a, b) =>
+      (a.medicineName || '').localeCompare(b.medicineName || '', undefined, { sensitivity: 'base' })
+    );
     return stockItems;
   } catch (error) {
     console.error('Error fetching stock items from Firestore:', error);
     return [];
   }
+}
+
+/**
+ * Real-time listener for stock items
+ */
+export function subscribeStockItems(onUpdate) {
+  const q = query(collection(db, COLLECTION_NAME));
+  return onSnapshot(q, (querySnapshot) => {
+    const stockItems = [];
+    querySnapshot.forEach((docSnap) => {
+      stockItems.push(StockItem.fromJson({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+    });
+    stockItems.sort((a, b) =>
+      (a.medicineName || '').localeCompare(b.medicineName || '', undefined, { sensitivity: 'base' })
+    );
+    onUpdate(stockItems);
+  }, (error) => {
+    console.error('Error in stock items realtime subscription:', error);
+    onUpdate([]);
+  });
 }
 
 /**

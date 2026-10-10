@@ -91,3 +91,70 @@ export function formatCurrency(amount) {
     maximumFractionDigits: 2
   }).format(amount || 0);
 }
+
+export function calculateSellingLineItem(item) {
+  const quantity = Number(item.quantity) || 0;
+  const mrp = Number(item.mrp) || 0;
+  const discountPercent = Number(item.discount) || 0; // UI label Disc
+
+  // rate = mrp * (100 - discountPercent) / 100
+  const rate = mrp * (100 - discountPercent) / 100;
+
+  const cgstPercent = item.cgstPercent !== undefined && item.cgstPercent !== '' ? Number(item.cgstPercent) : 2.5;
+  const sgstPercent = item.sgstPercent !== undefined && item.sgstPercent !== '' ? Number(item.sgstPercent) : 2.5;
+
+  const cgstAmount = rate * (cgstPercent / 100);
+  const sgstAmount = rate * (sgstPercent / 100);
+
+  const nettRate = rate + cgstAmount + sgstAmount;
+  const amount = quantity * nettRate;
+
+  return {
+    itemName: item.itemName || '',
+    quantity,
+    batchNo: item.batchNo || '',
+    expiryDate: item.expiryDate || '',
+    mrp: Number(mrp.toFixed(2)),
+    discount: Number(discountPercent.toFixed(2)),
+    rate: Number(rate.toFixed(4)),
+    cgstPercent: Number(cgstPercent.toFixed(2)),
+    cgstAmount: Number(cgstAmount.toFixed(4)),
+    sgstPercent: Number(sgstPercent.toFixed(2)),
+    sgstAmount: Number(sgstAmount.toFixed(4)),
+    nettRate: Number(nettRate.toFixed(4)),
+    amount: Number(amount.toFixed(2))
+  };
+}
+
+export function calculateSellingBillSummary(items = [], prevDue = 0, fixedDiscount = 0) {
+  const pd = Number(prevDue) || 0;
+  const fd = Math.max(0, Number(fixedDiscount) || 0);
+  const summary = items.reduce((acc, rawItem) => {
+    const item = calculateSellingLineItem(rawItem);
+    acc.totalItems += 1;
+    acc.totalQuantity += item.quantity;
+    acc.totalGst += item.quantity * (item.cgstAmount + item.sgstAmount);
+    acc.totalAmount += item.amount;
+    return acc;
+  }, {
+    totalItems: 0,
+    totalQuantity: 0,
+    totalGst: 0,
+    totalAmount: 0,
+    prevDue: pd,
+    fixedDiscount: fd,
+    grandTotal: 0
+  });
+  
+  // Total payable = total amount + prev due - fixed disc
+  summary.grandTotal = Math.max(0, summary.totalAmount + pd - fd);
+  
+  // Format to standard decimals
+  summary.totalGst = Number(summary.totalGst.toFixed(2));
+  summary.totalAmount = Number(summary.totalAmount.toFixed(2));
+  summary.fixedDiscount = Number(fd.toFixed(2));
+  summary.grandTotal = Number(summary.grandTotal.toFixed(2));
+
+  return summary;
+}
+

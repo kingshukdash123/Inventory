@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Menu } from 'lucide-react';
 
 export default function Navbar({ searchQuery, setSearchQuery, onToggleSidebar }) {
