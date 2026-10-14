@@ -92,6 +92,43 @@ export function formatCurrency(amount) {
   }).format(amount || 0);
 }
 
+/**
+ * Format date values to DD/MM/YYYY format (e.g. 14/10/2026)
+ */
+export function formatDate(dateInput) {
+  if (!dateInput) return '';
+
+  if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    // Match YYYY-MM-DD (e.g. 2026-10-14)
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    }
+    // Match DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = trimmed.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+      return `${dmyMatch[1]}/${dmyMatch[2]}/${dmyMatch[3]}`;
+    }
+  }
+
+  try {
+    const date = typeof dateInput?.toDate === 'function'
+      ? dateInput.toDate()
+      : (dateInput instanceof Date ? dateInput : new Date(dateInput));
+
+    if (isNaN(date.getTime())) return String(dateInput);
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch {
+    return String(dateInput);
+  }
+}
+
 export function calculateSellingLineItem(item) {
   const quantity = Number(item.quantity) || 0;
   const mrp = Number(item.mrp) || 0;

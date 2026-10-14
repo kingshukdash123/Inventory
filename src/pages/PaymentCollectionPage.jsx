@@ -6,7 +6,6 @@ import {
   Plus, 
   TrendingDown, 
   Award,
-  Search,
   Trash2,
   Calendar,
   Wallet,
@@ -16,18 +15,17 @@ import { useDialog } from '../context/DialogContext';
 import { fetchDoctorsFromFirestore, subscribeDoctors } from '../services/doctorService';
 import { fetchPaymentsFromFirestore, addPaymentToFirestore, deletePaymentFromFirestore, subscribePayments } from '../services/paymentService';
 import { fetchSellingBillsFromFirestore, subscribeSellingBills } from '../services/sellingBillService';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 // Modals
 import AddPaymentModal from '../components/AddPaymentModal';
 import DoctorHistoryModal from '../components/DoctorHistoryModal';
 
-export default function PaymentCollectionPage() {
+export default function PaymentCollectionPage({ searchQuery = '' }) {
   const [activeTab, setActiveTab] = useState('analytics'); // 'analytics' | 'history'
   const [doctors, setDoctors] = useState([]);
   const [payments, setPayments] = useState([]);
   const [sellingBills, setSellingBills] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   
   // Modal states
   const [selectedDoctorForPayment, setSelectedDoctorForPayment] = useState(null);
@@ -151,11 +149,16 @@ export default function PaymentCollectionPage() {
 
   // Filter lists based on search
   const filteredDoctors = doctors.filter(docObj => 
-    docObj.name.toLowerCase().includes(searchQuery.toLowerCase())
+    docObj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (docObj.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (docObj.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (docObj.taxId || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredPayments = payments.filter(payObj => 
     payObj.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (formatDate(payObj.paymentDate) || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (payObj.paymentDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (payObj.notes || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -274,17 +277,7 @@ export default function PaymentCollectionPage() {
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl">
-        <Search className="h-4 w-4 text-zinc-500 shrink-0" />
-        <input
-          type="text"
-          placeholder={activeTab === 'analytics' ? "Search doctors by name..." : "Search payment records..."}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-transparent border-none outline-none text-xs text-zinc-200 placeholder-zinc-500 w-full"
-        />
-      </div>
+
 
       {/* Main Content Area */}
       <div className="bg-zinc-900/85 border border-zinc-800 rounded-xl overflow-hidden shadow-xl min-h-[300px] relative">
@@ -338,8 +331,15 @@ export default function PaymentCollectionPage() {
                 <tbody className="divide-y divide-zinc-800/60 font-medium">
                   {filteredDoctors.map((docObj) => (
                     <tr key={docObj.id} className="hover:bg-zinc-800/40 transition-colors">
-                      <td className="py-4 px-6 font-bold text-zinc-150 uppercase tracking-wide">
-                        Dr. {docObj.name}
+                      <td className="py-4 px-6 text-zinc-150">
+                        <div className="font-bold uppercase tracking-wide">
+                          Dr. {docObj.name}
+                        </div>
+                        {docObj.phone && (
+                          <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
+                            {docObj.phone}
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right font-mono font-semibold text-zinc-300">
                         {formatCurrency(docObj.purchasedAmount)}
@@ -431,7 +431,7 @@ export default function PaymentCollectionPage() {
                       <td className="py-4 px-6 text-zinc-400 font-mono whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                          <span>{payObj.paymentDate}</span>
+                          <span>{formatDate(payObj.paymentDate)}</span>
                         </div>
                       </td>
                       <td className="py-4 px-6 font-bold text-zinc-150 uppercase">

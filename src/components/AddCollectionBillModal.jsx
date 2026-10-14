@@ -545,7 +545,7 @@ export default function AddCollectionBillModal({ isOpen, onClose, onSaveCollecti
 
             <div>
               <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                Invoice Date
+                Invoice Date (DD/MM/YYYY)
               </label>
               <input
                 type="date"

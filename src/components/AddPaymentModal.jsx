@@ -114,7 +114,7 @@ export default function AddPaymentModal({ isOpen, onClose, onSavePayment, doctor
 
             <div>
               <label className="block text-[10px] font-bold uppercase text-zinc-500 mb-1">
-                Payment Date
+                Payment Date (DD/MM/YYYY)
               </label>
               <input
                 type="date"

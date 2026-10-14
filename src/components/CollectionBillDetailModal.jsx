@@ -1,5 +1,5 @@
 import { X, Building2, Calendar, FileText, Edit3, Package, RefreshCw } from 'lucide-react';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 export default function CollectionBillDetailModal({ collectionBill, isOpen, onClose, onEdit, onAddToStock }) {
   if (!isOpen || !collectionBill) return null;
@@ -28,7 +28,7 @@ export default function CollectionBillDetailModal({ collectionBill, isOpen, onCl
                 <span>{collectionBill.supplierName}</span>
                 <span>•</span>
                 <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                <span>{collectionBill.invoiceDate}</span>
+                <span>{formatDate(collectionBill.invoiceDate)}</span>
                 {!collectionBill.isDraft ? (
                   collectionBill.addedToStock ? (
                     <>

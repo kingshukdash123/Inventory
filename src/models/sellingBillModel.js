@@ -121,6 +121,8 @@ export class SellingBill {
         doctorId = "",
         doctorName = "",
         doctorPhone = "",
+        doctorAddress = "",
+        doctorTaxId = "",
         invoiceDate = "",
         notes = "",
         initialDue = 0,
@@ -135,6 +137,8 @@ export class SellingBill {
         this.doctorId = doctorId;
         this.doctorName = doctorName;
         this.doctorPhone = doctorPhone;
+        this.doctorAddress = doctorAddress;
+        this.doctorTaxId = doctorTaxId;
         this.invoiceDate = invoiceDate;
         this.notes = notes;
         this.initialDue = Number(initialDue) || Number(summary.initialDue) || 0;
@@ -152,6 +156,8 @@ export class SellingBill {
             doctorId: json.doctorId || "",
             doctorName: json.doctorName || "",
             doctorPhone: json.doctorPhone || json.phone || "",
+            doctorAddress: json.doctorAddress || json.address || "",
+            doctorTaxId: json.doctorTaxId || json.taxId || json.gstin || "",
             invoiceDate: json.invoiceDate || "",
             notes: json.notes || "",
             initialDue: json.initialDue || json.summary?.initialDue || 0,
@@ -169,6 +175,8 @@ export class SellingBill {
             doctorId: this.doctorId,
             doctorName: this.doctorName,
             doctorPhone: this.doctorPhone,
+            doctorAddress: this.doctorAddress,
+            doctorTaxId: this.doctorTaxId,
             invoiceDate: this.invoiceDate,
             notes: this.notes,
             initialDue: this.initialDue,

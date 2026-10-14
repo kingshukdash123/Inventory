@@ -61,7 +61,7 @@ export function subscribeDoctors(onUpdate) {
 /**
  * Get a doctor by name (case-insensitive) or create a new one if not exists
  */
-export async function getOrCreateDoctorByName(name, phone = '') {
+export async function getOrCreateDoctorByName(name, phone = '', address = '', taxId = '') {
   if (!name || !name.trim()) return null;
   const normalizedName = name.trim().toUpperCase();
 
@@ -76,13 +76,26 @@ export async function getOrCreateDoctorByName(name, phone = '') {
     if (!querySnapshot.empty) {
       const docSnap = querySnapshot.docs[0];
       const existingData = docSnap.data();
-      if (phone && phone.trim() && !existingData.phone) {
-        await updateDoc(doc(db, COLLECTION_NAME, docSnap.id), {
-          phone: phone.trim(),
-          updatedAt: serverTimestamp()
-        });
+      const updates = {};
+
+      if (phone && phone.trim() && existingData.phone !== phone.trim()) {
+        updates.phone = phone.trim();
         existingData.phone = phone.trim();
       }
+      if (address && address.trim() && existingData.address !== address.trim()) {
+        updates.address = address.trim();
+        existingData.address = address.trim();
+      }
+      if (taxId && taxId.trim() && existingData.taxId !== taxId.trim()) {
+        updates.taxId = taxId.trim();
+        existingData.taxId = taxId.trim();
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updates.updatedAt = serverTimestamp();
+        await updateDoc(doc(db, COLLECTION_NAME, docSnap.id), updates);
+      }
+
       return Doctor.fromJson({
         id: docSnap.id,
         ...existingData
@@ -92,6 +105,8 @@ export async function getOrCreateDoctorByName(name, phone = '') {
       const newDoctor = new Doctor({
         name: normalizedName,
         phone: (phone || '').trim(),
+        address: (address || '').trim(),
+        taxId: (taxId || '').trim(),
         purchasedAmount: 0,
         paidAmount: 0,
         dueAmount: 0,

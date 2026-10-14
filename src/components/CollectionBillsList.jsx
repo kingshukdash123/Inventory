@@ -16,7 +16,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 export default function CollectionBillsList({ 
   officialCollectionBills = [], 
@@ -34,8 +34,16 @@ export default function CollectionBillsList({
 
   const currentCollectionBills = collectionBillMode === 'official' ? officialCollectionBills : draftCollectionBills;
 
-  // Filter and sort logic (latest bills first)
-  const getBillTimestamp = (bill) => {
+  // Filter and sort logic (order by invoice date descending, tie-break by createdAt)
+  const getInvoiceDateTimestamp = (bill) => {
+    if (bill.invoiceDate) {
+      const parsed = new Date(bill.invoiceDate).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const getCreatedAtTimestamp = (bill) => {
     if (bill.createdAt) {
       if (typeof bill.createdAt?.toDate === 'function') {
         return bill.createdAt.toDate().getTime();
@@ -48,22 +56,28 @@ export default function CollectionBillsList({
         return bill.createdAt.getTime();
       }
     }
-    if (bill.invoiceDate) {
-      const parsed = new Date(bill.invoiceDate).getTime();
-      if (!isNaN(parsed)) return parsed;
-    }
     return 0;
   };
 
   const filteredCollectionBills = currentCollectionBills
     .filter((collectionBill) => {
+      const formattedDate = formatDate(collectionBill.invoiceDate);
       return (
         (collectionBill.billNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (collectionBill.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (formattedDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (collectionBill.invoiceDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (collectionBill.items || []).some(item => (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()))
       );
     })
-    .sort((a, b) => getBillTimestamp(b) - getBillTimestamp(a));
+    .sort((a, b) => {
+      const dateA = getInvoiceDateTimestamp(a);
+      const dateB = getInvoiceDateTimestamp(b);
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      return getCreatedAtTimestamp(b) - getCreatedAtTimestamp(a);
+    });
 
   // Calculate Dashboard Metrics strictly for Published Bills
   const metrics = officialCollectionBills.reduce((acc, collectionBill) => {
@@ -346,7 +360,7 @@ export default function CollectionBillsList({
                       <td className="py-3.5 px-4 text-zinc-400 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3 w-3 text-zinc-500" />
-                          <span>{collectionBill.invoiceDate}</span>
+                          <span>{formatDate(collectionBill.invoiceDate)}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-center">

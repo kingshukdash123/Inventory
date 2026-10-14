@@ -1,5 +1,5 @@
 import { X, Building2, Calendar, FileText, Edit3, Package } from 'lucide-react';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, onEdit, zIndex = "z-50" }) {
   if (!isOpen || !sellingBill) return null;
@@ -19,7 +19,7 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
             </div>
             <div>
               <h3 className="text-lg font-bold text-zinc-100 font-mono">{sellingBill.billNo}</h3>
-              <p className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-zinc-400 flex flex-wrap items-center gap-2 mt-0.5">
                 <Building2 className="h-3.5 w-3.5 text-zinc-500" />
                 <span className="font-semibold text-zinc-300">Dr. {sellingBill.doctorName}</span>
                 {sellingBill.doctorPhone && (
@@ -28,9 +28,21 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
                     <span className="text-zinc-400 font-mono">{sellingBill.doctorPhone}</span>
                   </>
                 )}
+                {sellingBill.doctorTaxId && (
+                  <>
+                    <span>•</span>
+                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">Tax ID: {sellingBill.doctorTaxId}</span>
+                  </>
+                )}
+                {sellingBill.doctorAddress && (
+                  <>
+                    <span>•</span>
+                    <span className="text-zinc-400 truncate max-w-xs">{sellingBill.doctorAddress}</span>
+                  </>
+                )}
                 <span>•</span>
                 <Calendar className="h-3.5 w-3.5 text-zinc-500" />
-                <span>{sellingBill.invoiceDate}</span>
+                <span>{formatDate(sellingBill.invoiceDate)}</span>
                 {sellingBill.isDraft ? (
                   <>
                     <span>•</span>

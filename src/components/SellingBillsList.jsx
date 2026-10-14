@@ -15,7 +15,7 @@ import {
   Database,
   AlertCircle
 } from 'lucide-react';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 export default function SellingBillsList({ 
   officialSellingBills = [], 
@@ -33,8 +33,16 @@ export default function SellingBillsList({
 
   const currentSellingBills = sellingBillMode === 'official' ? officialSellingBills : draftSellingBills;
 
-  // Filter and sort logic (latest bills first)
-  const getBillTimestamp = (bill) => {
+  // Filter and sort logic (order by invoice date descending, tie-break by createdAt)
+  const getInvoiceDateTimestamp = (bill) => {
+    if (bill.invoiceDate) {
+      const parsed = new Date(bill.invoiceDate).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const getCreatedAtTimestamp = (bill) => {
     if (bill.createdAt) {
       if (typeof bill.createdAt?.toDate === 'function') {
         return bill.createdAt.toDate().getTime();
@@ -47,22 +55,31 @@ export default function SellingBillsList({
         return bill.createdAt.getTime();
       }
     }
-    if (bill.invoiceDate) {
-      const parsed = new Date(bill.invoiceDate).getTime();
-      if (!isNaN(parsed)) return parsed;
-    }
     return 0;
   };
 
   const filteredSellingBills = currentSellingBills
     .filter((sellingBill) => {
+      const formattedDate = formatDate(sellingBill.invoiceDate);
       return (
         (sellingBill.billNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.doctorName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sellingBill.doctorPhone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sellingBill.doctorAddress || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sellingBill.doctorTaxId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (formattedDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (sellingBill.invoiceDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.items || []).some(item => (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()))
       );
     })
-    .sort((a, b) => getBillTimestamp(b) - getBillTimestamp(a));
+    .sort((a, b) => {
+      const dateA = getInvoiceDateTimestamp(a);
+      const dateB = getInvoiceDateTimestamp(b);
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      return getCreatedAtTimestamp(b) - getCreatedAtTimestamp(a);
+    });
 
   // Calculate Dashboard Metrics strictly for Published Bills
   const metrics = officialSellingBills.reduce((acc, sellingBill) => {
@@ -329,15 +346,22 @@ export default function SellingBillsList({
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-zinc-200">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-3.5 w-3.5 text-zinc-550" />
-                          <span className="truncate max-w-[180px] font-bold">Dr. {sellingBill.doctorName}</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3.5 w-3.5 text-zinc-550 shrink-0" />
+                            <span className="truncate max-w-[180px] font-bold">Dr. {sellingBill.doctorName}</span>
+                          </div>
+                          {(sellingBill.doctorTaxId || sellingBill.doctorAddress) && (
+                            <span className="text-[10px] text-zinc-500 truncate max-w-[200px] pl-5.5">
+                              {[sellingBill.doctorTaxId ? `Tax: ${sellingBill.doctorTaxId}` : '', sellingBill.doctorAddress].filter(Boolean).join(' • ')}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-zinc-400 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-mono">
                           <Calendar className="h-3 w-3 text-zinc-500" />
-                          <span>{sellingBill.invoiceDate}</span>
+                          <span>{formatDate(sellingBill.invoiceDate)}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-center">

@@ -140,7 +140,15 @@ export async function publishDraftCollectionBillToFirestore(draftCollectionBill)
   });
 }
 
-const getBillTime = (bill) => {
+const getInvoiceDateTimestamp = (bill) => {
+  if (bill.invoiceDate) {
+    const t = new Date(bill.invoiceDate).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+};
+
+const getCreatedAtTimestamp = (bill) => {
   if (bill.createdAt) {
     if (typeof bill.createdAt?.toDate === 'function') return bill.createdAt.toDate().getTime();
     if (typeof bill.createdAt === 'string') {
@@ -149,11 +157,16 @@ const getBillTime = (bill) => {
     }
     if (bill.createdAt instanceof Date) return bill.createdAt.getTime();
   }
-  if (bill.invoiceDate) {
-    const t = new Date(bill.invoiceDate).getTime();
-    if (!isNaN(t)) return t;
-  }
   return 0;
+};
+
+const compareBillsByInvoiceDateDesc = (a, b) => {
+  const dateA = getInvoiceDateTimestamp(a);
+  const dateB = getInvoiceDateTimestamp(b);
+  if (dateA !== dateB) {
+    return dateB - dateA;
+  }
+  return getCreatedAtTimestamp(b) - getCreatedAtTimestamp(a);
 };
 
 export async function fetchCollectionBillsFromFirestore() {
@@ -168,7 +181,7 @@ export async function fetchCollectionBillsFromFirestore() {
         ...data
       }));
     });
-    collectionBills.sort((a, b) => getBillTime(b) - getBillTime(a));
+    collectionBills.sort(compareBillsByInvoiceDateDesc);
     return collectionBills;
   } catch (error) {
     console.error('Firestore fetch error:', error);
@@ -189,7 +202,7 @@ export function subscribeCollectionBills(onUpdate) {
         ...docSnap.data()
       }));
     });
-    collectionBills.sort((a, b) => getBillTime(b) - getBillTime(a));
+    collectionBills.sort(compareBillsByInvoiceDateDesc);
     onUpdate(collectionBills);
   }, (error) => {
     console.error('Error in collection bills realtime subscription:', error);

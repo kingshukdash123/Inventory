@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent } from 'lucide-react';
 import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 
 export default function InventoryPage({ searchQuery = '' }) {
   const [stockItems, setStockItems] = useState([]);
@@ -560,12 +560,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                         {/* Updated At */}
                         <td className="py-3.5 px-4 text-right text-[11px] text-zinc-500 whitespace-nowrap">
                           {item.updatedAt 
-                            ? new Date(item.updatedAt).toLocaleString('en-IN', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
+                            ? formatDate(item.updatedAt)
                             : 'N/A'
                           }
                         </td>

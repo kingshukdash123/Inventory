@@ -122,10 +122,24 @@ export async function addSellingBillToFirestore(sellingBillData) {
   // Get or create doctor by name
   let doctor = null;
   if (sellingBillData.doctorName) {
-    doctor = await getOrCreateDoctorByName(sellingBillData.doctorName, sellingBillData.doctorPhone);
+    doctor = await getOrCreateDoctorByName(
+      sellingBillData.doctorName,
+      sellingBillData.doctorPhone,
+      sellingBillData.doctorAddress,
+      sellingBillData.doctorTaxId
+    );
   }
   const doctorId = sellingBillData.doctorId || (doctor ? doctor.id : '');
   const prevDue = doctor ? doctor.dueAmount : 0;
+
+  const zeroQtyItem = (sellingBillData.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
+  if (zeroQtyItem) {
+    throw new Error(
+      zeroQtyItem.itemName && zeroQtyItem.itemName.trim()
+        ? `Quantity for "${zeroQtyItem.itemName}" must not be 0.`
+        : 'Product quantity must not be 0.'
+    );
+  }
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(sellingBillData.fixedDiscount) || 0;
@@ -138,6 +152,8 @@ export async function addSellingBillToFirestore(sellingBillData) {
     doctorId: doctorId,
     doctorName: sellingBillData.doctorName || 'Unknown Doctor',
     doctorPhone: sellingBillData.doctorPhone || '',
+    doctorAddress: sellingBillData.doctorAddress || (doctor ? doctor.address : '') || '',
+    doctorTaxId: sellingBillData.doctorTaxId || (doctor ? doctor.taxId : '') || '',
     invoiceDate: sellingBillData.invoiceDate || new Date().toISOString().split('T')[0],
     notes: sellingBillData.notes || '',
     initialDue: initialDue,
@@ -182,7 +198,12 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   }
 
   // Get doctor details
-  const doctor = await getOrCreateDoctorByName(sellingBillData.doctorName, sellingBillData.doctorPhone);
+  const doctor = await getOrCreateDoctorByName(
+    sellingBillData.doctorName,
+    sellingBillData.doctorPhone,
+    sellingBillData.doctorAddress,
+    sellingBillData.doctorTaxId
+  );
   const doctorId = doctor ? doctor.id : '';
 
   // If the doctor name did not change, subtract old bill amount to calculate true previous dues
@@ -191,6 +212,15 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
     const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
     prevDue = Math.max(0, prevDue - oldBillNet);
+  }
+
+  const zeroQtyItem = (sellingBillData.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
+  if (zeroQtyItem) {
+    throw new Error(
+      zeroQtyItem.itemName && zeroQtyItem.itemName.trim()
+        ? `Quantity for "${zeroQtyItem.itemName}" must not be 0.`
+        : 'Product quantity must not be 0.'
+    );
   }
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
@@ -204,6 +234,8 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     doctorId: doctorId,
     doctorName: sellingBillData.doctorName,
     doctorPhone: sellingBillData.doctorPhone || '',
+    doctorAddress: sellingBillData.doctorAddress || (doctor ? doctor.address : '') || '',
+    doctorTaxId: sellingBillData.doctorTaxId || (doctor ? doctor.taxId : '') || '',
     invoiceDate: sellingBillData.invoiceDate,
     notes: sellingBillData.notes || '',
     initialDue: newInitialDue,
@@ -249,9 +281,23 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
   const docRef = doc(db, COLLECTION_NAME, draftSellingBill.id);
 
   // Fetch doctor details
-  const doctor = await getOrCreateDoctorByName(draftSellingBill.doctorName, draftSellingBill.doctorPhone);
+  const doctor = await getOrCreateDoctorByName(
+    draftSellingBill.doctorName,
+    draftSellingBill.doctorPhone,
+    draftSellingBill.doctorAddress,
+    draftSellingBill.doctorTaxId
+  );
   const doctorId = doctor ? doctor.id : '';
   const prevDue = doctor ? doctor.dueAmount : 0;
+
+  const zeroQtyItem = (draftSellingBill.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
+  if (zeroQtyItem) {
+    throw new Error(
+      zeroQtyItem.itemName && zeroQtyItem.itemName.trim()
+        ? `Quantity for "${zeroQtyItem.itemName}" must not be 0.`
+        : 'Product quantity must not be 0.'
+    );
+  }
 
   const formattedItems = (draftSellingBill.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(draftSellingBill.summary?.fixedDiscount || draftSellingBill.fixedDiscount) || 0;
@@ -264,6 +310,8 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     doctorId: doctorId,
     doctorName: draftSellingBill.doctorName,
     doctorPhone: draftSellingBill.doctorPhone || '',
+    doctorAddress: draftSellingBill.doctorAddress || (doctor ? doctor.address : '') || '',
+    doctorTaxId: draftSellingBill.doctorTaxId || (doctor ? doctor.taxId : '') || '',
     invoiceDate: draftSellingBill.invoiceDate,
     notes: draftSellingBill.notes || '',
     initialDue: initialDue,
@@ -292,7 +340,15 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
   });
 }
 
-const getBillTime = (bill) => {
+const getInvoiceDateTimestamp = (bill) => {
+  if (bill.invoiceDate) {
+    const t = new Date(bill.invoiceDate).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+};
+
+const getCreatedAtTimestamp = (bill) => {
   if (bill.createdAt) {
     if (typeof bill.createdAt?.toDate === 'function') return bill.createdAt.toDate().getTime();
     if (typeof bill.createdAt === 'string') {
@@ -301,11 +357,16 @@ const getBillTime = (bill) => {
     }
     if (bill.createdAt instanceof Date) return bill.createdAt.getTime();
   }
-  if (bill.invoiceDate) {
-    const t = new Date(bill.invoiceDate).getTime();
-    if (!isNaN(t)) return t;
-  }
   return 0;
+};
+
+const compareBillsByInvoiceDateDesc = (a, b) => {
+  const dateA = getInvoiceDateTimestamp(a);
+  const dateB = getInvoiceDateTimestamp(b);
+  if (dateA !== dateB) {
+    return dateB - dateA;
+  }
+  return getCreatedAtTimestamp(b) - getCreatedAtTimestamp(a);
 };
 
 export async function fetchSellingBillsFromFirestore() {
@@ -319,7 +380,7 @@ export async function fetchSellingBillsFromFirestore() {
         ...docSnap.data()
       }));
     });
-    sellingBills.sort((a, b) => getBillTime(b) - getBillTime(a));
+    sellingBills.sort(compareBillsByInvoiceDateDesc);
     return sellingBills;
   } catch (error) {
     console.error('Error fetching selling bills:', error);
@@ -340,7 +401,7 @@ export function subscribeSellingBills(onUpdate) {
         ...docSnap.data()
       }));
     });
-    sellingBills.sort((a, b) => getBillTime(b) - getBillTime(a));
+    sellingBills.sort(compareBillsByInvoiceDateDesc);
     onUpdate(sellingBills);
   }, (error) => {
     console.error('Error in selling bills realtime subscription:', error);

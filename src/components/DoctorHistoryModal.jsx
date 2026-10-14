@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, ArrowDownLeft, ArrowUpRight, Eye } from 'lucide-react';
-import { formatCurrency } from '../utils/calculations';
+import { formatCurrency, formatDate } from '../utils/calculations';
 import SellingBillDetailModal from './SellingBillDetailModal';
 
 export default function DoctorHistoryModal({ 
@@ -17,10 +17,43 @@ export default function DoctorHistoryModal({
 
   const normalizedDoctorName = (doctorObj.name || '').trim().toUpperCase();
 
+  const getInvoiceDateTimestamp = (bill) => {
+    if (bill.invoiceDate) {
+      const parsed = new Date(bill.invoiceDate).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const getCreatedAtTimestamp = (bill) => {
+    if (bill.createdAt) {
+      if (typeof bill.createdAt?.toDate === 'function') {
+        return bill.createdAt.toDate().getTime();
+      }
+      if (typeof bill.createdAt === 'string') {
+        const parsed = new Date(bill.createdAt).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      if (bill.createdAt instanceof Date) {
+        return bill.createdAt.getTime();
+      }
+    }
+    return 0;
+  };
+
   // Filter bills & payments for this doctor (by doctorId or normalized name)
-  const doctorBills = sellingBills.filter(b => 
-    !b.isDraft && (b.doctorId === doctorObj.id || (b.doctorName && b.doctorName.trim().toUpperCase() === normalizedDoctorName))
-  );
+  const doctorBills = sellingBills
+    .filter(b => 
+      !b.isDraft && (b.doctorId === doctorObj.id || (b.doctorName && b.doctorName.trim().toUpperCase() === normalizedDoctorName))
+    )
+    .sort((a, b) => {
+      const dateA = getInvoiceDateTimestamp(a);
+      const dateB = getInvoiceDateTimestamp(b);
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      return getCreatedAtTimestamp(b) - getCreatedAtTimestamp(a);
+    });
   const doctorPayments = payments.filter(p => 
     p.doctorId === doctorObj.id || (p.doctorName && p.doctorName.trim().toUpperCase() === normalizedDoctorName)
   );
@@ -36,8 +69,16 @@ export default function DoctorHistoryModal({
               <h3 className="text-base font-bold text-zinc-100 uppercase tracking-wide">
                 Dr. {doctorObj.name}'s Account History
               </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Comprehensive list of all sales invoices and payment collections
+              <p className="text-xs text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
+                <span>Comprehensive list of all sales invoices and payment collections</span>
+                {(doctorObj.phone || doctorObj.taxId || doctorObj.address) && (
+                  <>
+                    <span>•</span>
+                    <span className="text-zinc-500 font-normal">
+                      {[doctorObj.phone, doctorObj.taxId ? `Tax: ${doctorObj.taxId}` : '', doctorObj.address].filter(Boolean).join(' • ')}
+                    </span>
+                  </>
+                )}
               </p>
             </div>
             <button
@@ -102,7 +143,7 @@ export default function DoctorHistoryModal({
                           <td className="py-2.5 px-3 font-mono font-bold text-zinc-200 group-hover:text-emerald-400 transition-colors">
                             {bill.billNo}
                           </td>
-                          <td className="py-2.5 px-3 text-zinc-450">{bill.invoiceDate}</td>
+                          <td className="py-2.5 px-3 text-zinc-450">{formatDate(bill.invoiceDate)}</td>
                           <td className="py-2.5 px-3 text-right font-mono text-zinc-400">{(bill.items || []).length}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-semibold text-zinc-200">
                             {bill.summary?.totalAmount?.toFixed(2)}
@@ -143,7 +184,7 @@ export default function DoctorHistoryModal({
                     <tbody className="divide-y divide-zinc-900 font-medium">
                       {doctorPayments.map((payment) => (
                         <tr key={payment.id} className="hover:bg-zinc-900/60 text-zinc-300">
-                          <td className="py-2.5 px-3 text-zinc-450">{payment.paymentDate}</td>
+                          <td className="py-2.5 px-3 text-zinc-450">{formatDate(payment.paymentDate)}</td>
                           <td className="py-2.5 px-3 font-semibold text-zinc-400">{payment.paymentMode}</td>
                           <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
                             {payment.amount?.toFixed(2)}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt } from 'lucide-react';
 import { calculateSellingLineItem, calculateSellingBillSummary, formatCurrency } from '../utils/calculations';
 import { fetchStockItemsFromFirestore } from '../services/stockService';
 import { fetchDoctorsFromFirestore } from '../services/doctorService';
@@ -17,6 +17,8 @@ export default function AddSellingBillModal({
   const [doctorName, setDoctorName] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [doctorPhone, setDoctorPhone] = useState('');
+  const [doctorAddress, setDoctorAddress] = useState('');
+  const [doctorTaxId, setDoctorTaxId] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
   const [notes, setNotes] = useState('');
   const [fixedDiscount, setFixedDiscount] = useState('');
@@ -155,6 +157,8 @@ export default function AddSellingBillModal({
       setDoctorName(sellingBillToEdit.doctorName || '');
       setDoctorId(sellingBillToEdit.doctorId || '');
       setDoctorPhone(sellingBillToEdit.doctorPhone || '');
+      setDoctorAddress(sellingBillToEdit.doctorAddress || sellingBillToEdit.address || '');
+      setDoctorTaxId(sellingBillToEdit.doctorTaxId || sellingBillToEdit.taxId || sellingBillToEdit.gstin || '');
       setInvoiceDate(sellingBillToEdit.invoiceDate || new Date().toISOString().split('T')[0]);
       setNotes(sellingBillToEdit.notes || '');
       setFixedDiscount(sellingBillToEdit.summary?.fixedDiscount !== undefined && sellingBillToEdit.summary?.fixedDiscount !== null ? sellingBillToEdit.summary.fixedDiscount : (sellingBillToEdit.fixedDiscount || ''));
@@ -181,6 +185,8 @@ export default function AddSellingBillModal({
       setDoctorName('');
       setDoctorId('');
       setDoctorPhone('');
+      setDoctorAddress('');
+      setDoctorTaxId('');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setFixedDiscount('');
@@ -256,13 +262,19 @@ export default function AddSellingBillModal({
     setDoctorName(uppercaseVal);
     setDoctorId('');
     
-    // If user changes doctor name, check if it matches an existing doctor to reload prevDue & phone
+    // If user changes doctor name, check if it matches an existing doctor to reload prevDue, phone, address, taxId
     const matched = doctorsList.find(d => d.name.toUpperCase() === uppercaseVal);
     if (matched) {
       setDoctorId(matched.id);
       setPrevDue(matched.dueAmount);
       if (matched.phone) {
         setDoctorPhone(matched.phone);
+      }
+      if (matched.address) {
+        setDoctorAddress(matched.address);
+      }
+      if (matched.taxId) {
+        setDoctorTaxId(matched.taxId);
       }
       setItems((prevItems) =>
         prevItems.map((item) => {
@@ -294,6 +306,12 @@ export default function AddSellingBillModal({
     setPrevDue(docObj.dueAmount);
     if (docObj.phone) {
       setDoctorPhone(docObj.phone);
+    }
+    if (docObj.address) {
+      setDoctorAddress(docObj.address);
+    }
+    if (docObj.taxId) {
+      setDoctorTaxId(docObj.taxId);
     }
     setShowDoctorDropdown(false);
 
@@ -637,6 +655,17 @@ export default function AddSellingBillModal({
       return;
     }
 
+    // Validation: check for 0 or empty quantity
+    const zeroQtyItem = items.find(i => i.quantity === '' || i.quantity === null || i.quantity === undefined || Number(i.quantity) <= 0);
+    if (zeroQtyItem) {
+      setErrorMessage(
+        zeroQtyItem.itemName && zeroQtyItem.itemName.trim()
+          ? `Quantity for "${zeroQtyItem.itemName}" must not be 0.`
+          : 'Product quantity must not be 0.'
+      );
+      return;
+    }
+
     // Validation: check stock limit
     if (saveMode === 'firestore') {
       const stockViolation = items.find(i => Number(i.quantity) > i.availableQty);
@@ -655,6 +684,8 @@ export default function AddSellingBillModal({
         doctorId,
         doctorName,
         doctorPhone,
+        doctorAddress,
+        doctorTaxId,
         invoiceDate,
         notes,
         fixedDiscount: Number(fixedDiscount) || 0,
@@ -713,28 +744,38 @@ export default function AddSellingBillModal({
             </div>
           )}
 
-          {/* Side by side: Seller details (static) vs Doctor details (input fields) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-zinc-900/40 p-5 rounded-xl border border-zinc-800">
-            {/* Seller Details */}
-            <div className="space-y-2 border-r border-zinc-800 pr-0 lg:pr-6">
-              <h4 className="text-xs font-extrabold uppercase text-zinc-400 tracking-wider">
-                Seller Details
-              </h4>
+          {/* 3 Columns: Seller Details | Doctor Details | Bill No & Date */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 bg-zinc-900/40 p-5 rounded-xl border border-zinc-800">
+            {/* Column 1: Seller Details */}
+            <div className="lg:col-span-3 space-y-2.5 border-b lg:border-b-0 lg:border-r border-zinc-800 pb-4 lg:pb-0 lg:pr-5">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-3.5 w-3.5 text-zinc-400" />
+                <h4 className="text-xs font-extrabold uppercase text-zinc-400 tracking-wider">
+                  Seller Details
+                </h4>
+              </div>
               <div className="space-y-1.5 text-xs text-zinc-300">
-                <p className="font-bold text-sm text-zinc-100">{sellerDetails.name}</p>
-                <p className="text-zinc-400">{sellerDetails.address}</p>
-                <p className="font-mono text-zinc-500 text-[11px]">GSTIN: {sellerDetails.gstin}</p>
-                <p className="text-zinc-500">Contact: {sellerDetails.contact}</p>
+                <p className="font-bold text-sm text-zinc-100">{sellerDetails.name || 'Company Name'}</p>
+                <p className="text-zinc-400 text-xs leading-relaxed">{sellerDetails.address || 'Address not specified'}</p>
+                <p className="font-mono text-zinc-400 text-[11px]">
+                  <span className="text-zinc-500 font-semibold">GSTIN:</span> {sellerDetails.gstin || 'N/A'}
+                </p>
+                <p className="text-zinc-400 text-[11px]">
+                  <span className="text-zinc-500 font-semibold">Contact:</span> {sellerDetails.contact || 'N/A'}
+                </p>
               </div>
             </div>
 
-            {/* Doctor Details */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-extrabold uppercase text-zinc-400 tracking-wider">
-                Doctor Details
-              </h4>
+            {/* Column 2: Doctor Details */}
+            <div className="lg:col-span-6 space-y-3 border-b lg:border-b-0 lg:border-r border-zinc-800 pb-4 lg:pb-0 lg:pr-5">
+              <div className="flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-zinc-400" />
+                <h4 className="text-xs font-extrabold uppercase text-zinc-400 tracking-wider">
+                  Doctor Details
+                </h4>
+              </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="relative">
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
                     Doctor Name <span className="text-zinc-500">*</span>
@@ -756,7 +797,15 @@ export default function AddSellingBillModal({
                           onMouseDown={() => selectDoctorSuggestion(docObj)}
                           className="px-3 py-2 text-xs font-semibold uppercase text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200 cursor-pointer transition-colors"
                         >
-                          {docObj.name} <span className="text-[10px] text-zinc-500 lowercase font-normal">(due: ₹{docObj.dueAmount.toFixed(2)})</span>
+                          <div className="flex items-center justify-between">
+                            <span>{docObj.name}</span>
+                            <span className="text-[10px] text-zinc-500 lowercase font-normal">(due: ₹{docObj.dueAmount.toFixed(2)})</span>
+                          </div>
+                          {(docObj.address || docObj.taxId || docObj.phone) && (
+                            <div className="text-[10px] text-zinc-500 font-normal truncate mt-0.5">
+                              {[docObj.taxId ? `Tax: ${docObj.taxId}` : '', docObj.address, docObj.phone].filter(Boolean).join(' • ')}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -765,18 +814,55 @@ export default function AddSellingBillModal({
 
                 <div>
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                    Invoice Date
+                    Contact No
                   </label>
                   <input
-                    type="date"
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    type="tel"
+                    value={doctorPhone}
+                    onChange={(e) => setDoctorPhone(e.target.value)}
+                    placeholder="E.G. +91 99999 99999"
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                    Doctor Address
+                  </label>
+                  <input
+                    type="text"
+                    value={doctorAddress}
+                    onChange={(e) => setDoctorAddress(e.target.value)}
+                    placeholder="CLINIC / HOSPITAL ADDRESS"
                     className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                    Tax ID / GSTIN
+                  </label>
+                  <input
+                    type="text"
+                    value={doctorTaxId}
+                    onChange={(e) => setDoctorTaxId(e.target.value.toUpperCase())}
+                    placeholder="GSTIN / REG NO."
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Column 3: Bill No & Date */}
+            <div className="lg:col-span-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <Receipt className="h-3.5 w-3.5 text-zinc-400" />
+                <h4 className="text-xs font-extrabold uppercase text-zinc-400 tracking-wider">
+                  Bill No & Date
+                </h4>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
                     Bill No (Auto-Generated if empty)
@@ -793,14 +879,13 @@ export default function AddSellingBillModal({
 
                 <div>
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                    Contact No
+                    Invoice Date (DD/MM/YYYY)
                   </label>
                   <input
-                    type="tel"
-                    value={doctorPhone}
-                    onChange={(e) => setDoctorPhone(e.target.value)}
-                    placeholder="E.G. +91 99999 99999"
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono"
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none"
                   />
                 </div>
               </div>
@@ -846,10 +931,12 @@ export default function AddSellingBillModal({
                 <tbody className="divide-y divide-zinc-800/60 font-medium">
                   {items.map((rawItem, index) => {
                     const calc = calculatedItems[index];
-                    const outOfStock = Number(rawItem.quantity) > rawItem.availableQty;
+                    const numQty = Number(rawItem.quantity);
+                    const isZeroQty = rawItem.quantity !== '' && numQty <= 0;
+                    const outOfStock = numQty > rawItem.availableQty;
 
                     return (
-                      <tr key={index} className={`hover:bg-zinc-900/80 transition-colors ${outOfStock ? 'bg-rose-500/5' : ''}`}>
+                      <tr key={index} className={`hover:bg-zinc-900/80 transition-colors ${outOfStock || isZeroQty ? 'bg-rose-500/5' : ''}`}>
                         {/* Serial No */}
                         <td className="p-2 text-center text-zinc-500 font-mono">
                           {index + 1}
@@ -910,14 +997,18 @@ export default function AddSellingBillModal({
                             value={rawItem.quantity}
                             onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                             className={`w-full bg-zinc-950 border rounded px-2 py-1 text-xs text-zinc-200 text-center font-mono outline-none ${
-                              outOfStock ? 'border-rose-500 focus:border-rose-500 text-rose-300' : 'border-zinc-800 focus:border-zinc-500'
+                              outOfStock || isZeroQty ? 'border-rose-500 focus:border-rose-500 text-rose-300' : 'border-zinc-800 focus:border-zinc-500'
                             }`}
                           />
-                          {rawItem.availableQty !== 9999 && (
+                          {isZeroQty ? (
+                            <span className="block text-[9px] text-center mt-0.5 font-bold text-rose-450 animate-pulse">
+                              must not be 0
+                            </span>
+                          ) : rawItem.availableQty !== 9999 ? (
                             <span className={`block text-[9px] text-center mt-0.5 font-bold ${outOfStock ? 'text-rose-450 animate-pulse' : 'text-zinc-550'}`}>
                               max: {rawItem.availableQty}
                             </span>
-                          )}
+                          ) : null}
                         </td>
 
                         {/* Batch No */}
