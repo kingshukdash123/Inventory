@@ -126,9 +126,11 @@ export function calculateSellingLineItem(item) {
   };
 }
 
-export function calculateSellingBillSummary(items = [], prevDue = 0, fixedDiscount = 0) {
+export function calculateSellingBillSummary(items = [], prevDue = 0, fixedDiscount = 0, initialDue = 0) {
   const pd = Number(prevDue) || 0;
+  const initDue = Math.max(0, Number(initialDue) || 0);
   const fd = Math.max(0, Number(fixedDiscount) || 0);
+
   const summary = items.reduce((acc, rawItem) => {
     const item = calculateSellingLineItem(rawItem);
     acc.totalItems += 1;
@@ -142,16 +144,19 @@ export function calculateSellingBillSummary(items = [], prevDue = 0, fixedDiscou
     totalGst: 0,
     totalAmount: 0,
     prevDue: pd,
+    initialDue: initDue,
     fixedDiscount: fd,
     grandTotal: 0
   });
   
-  // Total payable = total amount + prev due - fixed disc
-  summary.grandTotal = Math.max(0, summary.totalAmount + pd - fd);
+  // Total payable = total amount + prev due + initial due - fixed disc
+  summary.grandTotal = Math.max(0, summary.totalAmount + pd + initDue - fd);
   
   // Format to standard decimals
   summary.totalGst = Number(summary.totalGst.toFixed(2));
   summary.totalAmount = Number(summary.totalAmount.toFixed(2));
+  summary.prevDue = Number(pd.toFixed(2));
+  summary.initialDue = Number(initDue.toFixed(2));
   summary.fixedDiscount = Number(fd.toFixed(2));
   summary.grandTotal = Number(summary.grandTotal.toFixed(2));
 

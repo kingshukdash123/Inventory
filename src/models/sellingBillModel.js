@@ -73,14 +73,16 @@ export class SellingBillSummary {
         totalGst = 0,
         totalAmount = 0, // total nett amount of bill items
         prevDue = 0,
+        initialDue = 0,
         fixedDiscount = 0,
-        grandTotal = 0, // totalAmount + prevDue - fixedDiscount
+        grandTotal = 0, // totalAmount + prevDue + initialDue - fixedDiscount
     } = {}) {
         this.totalItems = Number(totalItems) || 0;
         this.totalQuantity = Number(totalQuantity) || 0;
         this.totalGst = Number(totalGst) || 0;
         this.totalAmount = Number(totalAmount) || 0;
         this.prevDue = Number(prevDue) || 0;
+        this.initialDue = Number(initialDue) || 0;
         this.fixedDiscount = Number(fixedDiscount) || 0;
         this.grandTotal = Number(grandTotal) || 0;
     }
@@ -92,6 +94,7 @@ export class SellingBillSummary {
             totalGst: json.totalGst || 0,
             totalAmount: json.totalAmount || 0,
             prevDue: json.prevDue || 0,
+            initialDue: json.initialDue || 0,
             fixedDiscount: json.fixedDiscount || 0,
             grandTotal: json.grandTotal || 0,
         });
@@ -104,6 +107,7 @@ export class SellingBillSummary {
             totalGst: this.totalGst,
             totalAmount: this.totalAmount,
             prevDue: this.prevDue,
+            initialDue: this.initialDue,
             fixedDiscount: this.fixedDiscount,
             grandTotal: this.grandTotal,
         };
@@ -119,6 +123,7 @@ export class SellingBill {
         doctorPhone = "",
         invoiceDate = "",
         notes = "",
+        initialDue = 0,
         items = [],
         summary = {},
         createdAt = "",
@@ -132,6 +137,7 @@ export class SellingBill {
         this.doctorPhone = doctorPhone;
         this.invoiceDate = invoiceDate;
         this.notes = notes;
+        this.initialDue = Number(initialDue) || Number(summary.initialDue) || 0;
         this.items = items.map(item => item instanceof SellingBillItem ? item : new SellingBillItem(item));
         this.summary = summary instanceof SellingBillSummary ? summary : new SellingBillSummary(summary);
         this.createdAt = createdAt;
@@ -148,6 +154,7 @@ export class SellingBill {
             doctorPhone: json.doctorPhone || json.phone || "",
             invoiceDate: json.invoiceDate || "",
             notes: json.notes || "",
+            initialDue: json.initialDue || json.summary?.initialDue || 0,
             items: (json.items || []).map(item => SellingBillItem.fromJson(item)),
             summary: SellingBillSummary.fromJson(json.summary || {}),
             createdAt: json.createdAt?.toDate?.() || json.createdAt || "",
@@ -164,6 +171,7 @@ export class SellingBill {
             doctorPhone: this.doctorPhone,
             invoiceDate: this.invoiceDate,
             notes: this.notes,
+            initialDue: this.initialDue,
             items: this.items.map(item => item.toJson()),
             summary: this.summary.toJson(),
             createdAt: this.createdAt,

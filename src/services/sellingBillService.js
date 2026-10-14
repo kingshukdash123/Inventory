@@ -129,7 +129,8 @@ export async function addSellingBillToFirestore(sellingBillData) {
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(sellingBillData.fixedDiscount) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount);
+  const initialDue = Number(sellingBillData.initialDue) || 0;
+  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, initialDue);
   const isDraft = !!sellingBillData.isDraft;
 
   const sellingBill = new SellingBill({
@@ -139,6 +140,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
     doctorPhone: sellingBillData.doctorPhone || '',
     invoiceDate: sellingBillData.invoiceDate || new Date().toISOString().split('T')[0],
     notes: sellingBillData.notes || '',
+    initialDue: initialDue,
     items: formattedItems,
     summary: summary,
     createdAt: serverTimestamp(),
@@ -152,7 +154,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
   if (!isDraft) {
     await deductBillFromStock(sellingBill);
     if (doctorId) {
-      const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount);
+      const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
       await adjustDoctorBalances(doctorId, billNet, 0);
     }
     await updateDoc(doc(db, COLLECTION_NAME, docRef.id), {
@@ -186,13 +188,15 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   // If the doctor name did not change, subtract old bill amount to calculate true previous dues
   let prevDue = doctor ? doctor.dueAmount : 0;
   if (oldBill && !oldBill.isDraft && oldBill.doctorId === doctorId) {
-    const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0));
+    const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
+    const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
     prevDue = Math.max(0, prevDue - oldBillNet);
   }
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(sellingBillData.fixedDiscount) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount);
+  const newInitialDue = Number(sellingBillData.initialDue) || 0;
+  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, newInitialDue);
 
   const sellingBill = new SellingBill({
     id: sellingBillId,
@@ -202,6 +206,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     doctorPhone: sellingBillData.doctorPhone || '',
     invoiceDate: sellingBillData.invoiceDate,
     notes: sellingBillData.notes || '',
+    initialDue: newInitialDue,
     items: formattedItems,
     summary: summary,
     isDraft: isDraft,
@@ -212,7 +217,8 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   if (oldBill && !oldBill.isDraft && oldBill.stockSynced) {
     await addBillBackToStock(oldBill);
     if (oldBill.doctorId) {
-      const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0));
+      const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
+      const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
       await adjustDoctorBalances(oldBill.doctorId, -oldBillNet, 0);
     }
   }
@@ -221,7 +227,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   if (!isDraft) {
     await deductBillFromStock(sellingBill);
     if (doctorId) {
-      const newBillNet = Math.max(0, summary.totalAmount - summary.fixedDiscount);
+      const newBillNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + newInitialDue;
       await adjustDoctorBalances(doctorId, newBillNet, 0);
     }
     sellingBill.stockSynced = true;
@@ -249,7 +255,8 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
 
   const formattedItems = (draftSellingBill.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(draftSellingBill.summary?.fixedDiscount || draftSellingBill.fixedDiscount) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount);
+  const initialDue = Number(draftSellingBill.initialDue || draftSellingBill.summary?.initialDue) || 0;
+  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, initialDue);
 
   const publishedBill = new SellingBill({
     id: draftSellingBill.id,
@@ -259,6 +266,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     doctorPhone: draftSellingBill.doctorPhone || '',
     invoiceDate: draftSellingBill.invoiceDate,
     notes: draftSellingBill.notes || '',
+    initialDue: initialDue,
     items: formattedItems,
     summary: summary,
     isDraft: false,
@@ -267,7 +275,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
 
   await deductBillFromStock(publishedBill);
   if (doctorId) {
-    const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount);
+    const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
     await adjustDoctorBalances(doctorId, billNet, 0);
   }
   publishedBill.stockSynced = true;
@@ -351,7 +359,8 @@ export async function deleteSellingBillFromFirestore(sellingBillId) {
       if (!oldBill.isDraft && oldBill.stockSynced) {
         await addBillBackToStock(oldBill);
         if (oldBill.doctorId) {
-          const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0));
+          const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
+          const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
           await adjustDoctorBalances(oldBill.doctorId, -oldBillNet, 0);
         }
       }

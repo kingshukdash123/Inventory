@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent } from 'lucide-react';
 import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
 import { formatCurrency } from '../utils/calculations';
@@ -41,47 +41,135 @@ export default function InventoryPage({ searchQuery = '' }) {
     return () => unsubscribe();
   }, []);
 
-  // Filter items based on search query (medicine name or batch number) and status filter
-  const filteredItems = stockItems
-    .filter((item) => {
-      // 1. Search Query filter
-      const matchesSearch = 
-        (item.medicineName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.batchNo || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // 2. Status Filter
-      if (!matchesSearch) return false;
-      
-      if (statusFilter === 'instock') {
-        return item.availableQuantity >= 10;
-      } else if (statusFilter === 'lowstock') {
-        return item.availableQuantity > 0 && item.availableQuantity < 10;
-      } else if (statusFilter === 'outofstock') {
-        return item.availableQuantity === 0;
+  // 1. Group stock items by medicine product and resolve 0-quantity sub-row rules
+  const processedProducts = useMemo(() => {
+    const groups = new Map();
+
+    stockItems.forEach((item) => {
+      const key = (item.medicineName || '').trim().toLowerCase();
+      if (!groups.has(key)) {
+        groups.set(key, {
+          medicineName: item.medicineName,
+          batches: []
+        });
       }
-      
-      return true;
-    })
-    .sort((a, b) =>
+      groups.get(key).batches.push(item);
+    });
+
+    const parseTimestamp = (d) => {
+      if (!d) return 0;
+      if (d?.toDate) return d.toDate().getTime();
+      if (d instanceof Date) return d.getTime();
+      const time = new Date(d).getTime();
+      return isNaN(time) ? 0 : time;
+    };
+
+    const result = [];
+
+    groups.forEach((group) => {
+      const { batches } = group;
+      const positiveBatches = batches.filter(b => (Number(b.availableQuantity) || 0) > 0);
+      const zeroBatches = batches.filter(b => (Number(b.availableQuantity) || 0) <= 0);
+
+      let resolvedBatches = [];
+
+      if (positiveBatches.length > 0) {
+        // If there are batches with positive stock, eliminate all 0-qty batches
+        resolvedBatches = positiveBatches;
+      } else {
+        // If all batches have 0 qty, keep ONLY the single latest batch
+        const sortedZero = [...zeroBatches].sort((a, b) => {
+          const timeA = parseTimestamp(a.updatedAt) || parseTimestamp(a.createdAt);
+          const timeB = parseTimestamp(b.updatedAt) || parseTimestamp(b.createdAt);
+          return timeB - timeA;
+        });
+        resolvedBatches = sortedZero.length > 0 ? [sortedZero[0]] : [];
+      }
+
+      // Sort batches within product alphabetically by batch number
+      resolvedBatches.sort((a, b) => (a.batchNo || '').localeCompare(b.batchNo || ''));
+
+      const totalQty = resolvedBatches.reduce(
+        (acc, b) => acc + (Number(b.availableQuantity) || 0),
+        0
+      );
+
+      result.push({
+        medicineName: group.medicineName,
+        totalAvailableQty: totalQty,
+        batches: resolvedBatches
+      });
+    });
+
+    return result.sort((a, b) =>
       (a.medicineName || '').localeCompare(b.medicineName || '', undefined, { sensitivity: 'base' })
     );
+  }, [stockItems]);
 
-  // Calculate Metrics
-  const totalUniqueMedicines = new Set(stockItems.map(item => item.medicineName?.toLowerCase())).size;
-  
-  const totalStockValue = stockItems.reduce((sum, item) => {
+  // Flatten active batches across all products for aggregate stats
+  const activeBatches = useMemo(() => {
+    return processedProducts.flatMap(p => p.batches);
+  }, [processedProducts]);
+
+  // 2. Filter products and batches based on search query and status filter
+  const filteredProducts = useMemo(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+
+    return processedProducts
+      .map((product) => {
+        const medMatches = (product.medicineName || '').toLowerCase().includes(q);
+
+        const matchingBatches = product.batches.filter((batch) => {
+          // A. Search Query Match
+          const batchMatches =
+            medMatches ||
+            (batch.batchNo || '').toLowerCase().includes(q) ||
+            (batch.supplierName || '').toLowerCase().includes(q);
+
+          if (!batchMatches) return false;
+
+          // B. Status Filter Match
+          if (statusFilter === 'instock') {
+            return batch.availableQuantity >= 10;
+          } else if (statusFilter === 'lowstock') {
+            return batch.availableQuantity > 0 && batch.availableQuantity < 10;
+          } else if (statusFilter === 'outofstock') {
+            return batch.availableQuantity === 0;
+          }
+
+          return true;
+        });
+
+        if (matchingBatches.length === 0) return null;
+
+        return {
+          ...product,
+          batches: matchingBatches
+        };
+      })
+      .filter(Boolean);
+  }, [processedProducts, searchQuery, statusFilter]);
+
+  const filteredBatchesCount = useMemo(() => {
+    return filteredProducts.reduce((sum, p) => sum + p.batches.length, 0);
+  }, [filteredProducts]);
+
+  // Calculate Metrics from active inventory
+  const totalUniqueMedicines = processedProducts.length;
+
+  const totalStockValue = activeBatches.reduce((sum, item) => {
     return sum + (item.availableQuantity * item.purchaseRate);
   }, 0);
 
-  const totalDoctorRateValue = stockItems.reduce((sum, item) => {
+  const totalDoctorRateValue = activeBatches.reduce((sum, item) => {
     return sum + (item.availableQuantity * item.doctorRate);
   }, 0);
 
-  const totalReceivedQty = stockItems.reduce((sum, item) => sum + item.receivedQuantity, 0);
-  
-  const lowStockAlerts = stockItems.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
-  const outOfStockAlerts = stockItems.filter(item => item.availableQuantity === 0).length;
+  const totalReceivedQty = stockItems.reduce((sum, item) => sum + (Number(item.receivedQuantity) || 0), 0);
+
+  const inStockBatches = activeBatches.filter(item => item.availableQuantity >= 10).length;
+  const lowStockAlerts = activeBatches.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
+  const outOfStockAlerts = activeBatches.filter(item => item.availableQuantity === 0).length;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
@@ -232,7 +320,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              All Items ({stockItems.length})
+              All Items ({activeBatches.length})
             </button>
             <button
               onClick={() => setStatusFilter('instock')}
@@ -242,7 +330,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              In Stock ({stockItems.filter(i => i.availableQuantity >= 10).length})
+              In Stock ({inStockBatches})
             </button>
             <button
               onClick={() => setStatusFilter('lowstock')}
@@ -268,7 +356,7 @@ export default function InventoryPage({ searchQuery = '' }) {
         </div>
 
         <div className="text-xs text-zinc-500">
-          Showing <strong className="text-zinc-300">{filteredItems.length}</strong> of {stockItems.length} stock products
+          Showing <strong className="text-zinc-300">{filteredBatchesCount}</strong> active batches ({filteredProducts.length} medicines)
         </div>
       </div>
 
@@ -315,7 +403,7 @@ export default function InventoryPage({ searchQuery = '' }) {
               </tbody>
             </table>
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="h-12 w-12 rounded-full bg-zinc-800/80 flex items-center justify-center mx-auto text-zinc-500">
               <Package className="h-6 w-6" />
@@ -350,110 +438,140 @@ export default function InventoryPage({ searchQuery = '' }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60 font-medium">
-                {filteredItems.map((item) => {
-                  const isLow = item.availableQuantity > 0 && item.availableQuantity < 10;
-                  const isOut = item.availableQuantity === 0;
-                  
-                  return (
-                    <tr 
-                      key={item.id}
-                      className="hover:bg-zinc-800/40 transition-colors border-b border-zinc-800/60"
-                    >
-                      {/* Name */}
-                      <td className="py-3.5 px-4 min-w-[220px]">
-                        <div className="font-semibold text-zinc-100 text-sm">{item.medicineName}</div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="text-sm text-zinc-300">{item.supplierName || 'N/A'}</div>
-                      </td>
+                {filteredProducts.map((product) => {
+                  const batchCount = product.batches.length;
 
-                      {/* Batch */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="bg-zinc-800/80 px-2 py-0.5 rounded text-[11px] font-mono text-zinc-300 border border-zinc-700/30">
-                          {item.batchNo || 'N/A'}
-                        </span>
-                      </td>
+                  return product.batches.map((item, index) => {
+                    const isFirst = index === 0;
+                    const isLast = index === batchCount - 1;
+                    const isLow = item.availableQuantity > 0 && item.availableQuantity < 10;
+                    const isOut = item.availableQuantity === 0;
 
-                      {/* Expiry */}
-                      <td className="py-3.5 px-4 text-center font-mono text-zinc-400 whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
-                          <Calendar className="h-3 w-3 text-zinc-500" />
-                          <span>{item.expiryDate || 'N/A'}</span>
-                        </div>
-                      </td>
-
-                      {/* Available Qty */}
-                      <td className="py-3.5 px-4 text-center">
-                        {isOut ? (
-                          <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                            Out of Stock
-                          </span>
-                        ) : isLow ? (
-                          <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
-                            {item.availableQuantity} (Low)
-                          </span>
-                        ) : (
-                          <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
-                            {item.availableQuantity}
-                          </span>
+                    return (
+                      <tr 
+                        key={item.id}
+                        className={`hover:bg-zinc-800/40 transition-colors ${
+                          isLast ? 'border-b border-zinc-700/80' : 'border-b border-zinc-800/40'
+                        }`}
+                      >
+                        {/* Merged Product Name Cell */}
+                        {isFirst && (
+                          <td 
+                            rowSpan={batchCount}
+                            className="py-3.5 px-4 min-w-[220px] align-top bg-zinc-950/40 border-r border-zinc-800/80"
+                          >
+                            <div className="font-semibold text-zinc-100 text-sm">{product.medicineName}</div>
+                            {batchCount > 1 && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                                <span className="bg-zinc-800 text-zinc-300 text-[10px] px-2 py-0.5 rounded font-mono font-semibold border border-zinc-700/60 shadow-xs">
+                                  {batchCount} Batches
+                                </span>
+                                <span className="text-[10px] text-zinc-400 font-mono">
+                                  Total: {product.totalAvailableQty} units
+                                </span>
+                              </div>
+                            )}
+                          </td>
                         )}
-                      </td>
 
-                      {/* Received Qty */}
-                      <td className="py-3.5 px-4 text-center font-mono text-zinc-400">
-                        {item.receivedQuantity}
-                      </td>
+                        {/* Supplier */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5 text-sm text-zinc-300">
+                            {batchCount > 1 && (
+                              <span className="text-zinc-500 font-mono text-xs select-none">↳</span>
+                            )}
+                            <span>{item.supplierName || 'N/A'}</span>
+                          </div>
+                        </td>
 
-                      {/* MRP */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
-                        ₹{item.mrp?.toFixed(2)}
-                      </td>
+                        {/* Batch */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="bg-zinc-800/80 px-2 py-0.5 rounded text-[11px] font-mono text-zinc-300 border border-zinc-700/30">
+                            {item.batchNo || 'N/A'}
+                          </span>
+                        </td>
 
-                      {/* Doctor Discount */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
-                        {item.doctorDisc || 0}%
-                      </td>
+                        {/* Expiry */}
+                        <td className="py-3.5 px-4 text-center font-mono text-zinc-400 whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <Calendar className="h-3 w-3 text-zinc-500" />
+                            <span>{item.expiryDate || 'N/A'}</span>
+                          </div>
+                        </td>
 
-                      {/* Doctor Rate */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
-                        ₹{item.doctorRate?.toFixed(2)}
-                      </td>
+                        {/* Available Qty */}
+                        <td className="py-3.5 px-4 text-center">
+                          {isOut ? (
+                            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                              Out of Stock
+                            </span>
+                          ) : isLow ? (
+                            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
+                              {item.availableQuantity} (Low)
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] px-2.5 py-0.5 rounded font-bold font-mono">
+                              {item.availableQuantity}
+                            </span>
+                          )}
+                        </td>
 
-                      {/* Retailer Discount */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
-                        {item.discount || 0}%
-                      </td>
+                        {/* Received Qty */}
+                        <td className="py-3.5 px-4 text-center font-mono text-zinc-400">
+                          {item.receivedQuantity}
+                        </td>
 
-                      {/* Purchase Rate */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-200 font-semibold">
-                        ₹{item.purchaseRate?.toFixed(2)}
-                      </td>
+                        {/* MRP */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
+                          ₹{item.mrp?.toFixed(2)}
+                        </td>
 
-                      {/* CGST + SGST */}
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
-                        <div className="flex items-center justify-end gap-1">
-                          <Percent className="h-3 w-3 text-zinc-500" />
-                          <span>{((item.cgstPercent || 0) + (item.sgstPercent || 0)).toFixed(1)}%</span>
-                        </div>
-                        <div className="text-[9px] text-zinc-500">
-                          C: {item.cgstPercent || 0}% | S: {item.sgstPercent || 0}%
-                        </div>
-                      </td>
+                        {/* Doctor Discount */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
+                          {item.doctorDisc || 0}%
+                        </td>
 
-                      {/* Updated At */}
-                      <td className="py-3.5 px-4 text-right text-[11px] text-zinc-500 whitespace-nowrap">
-                        {item.updatedAt 
-                          ? new Date(item.updatedAt).toLocaleString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })
-                          : 'N/A'
-                        }
-                      </td>
-                    </tr>
-                  );
+                        {/* Doctor Rate */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-300">
+                          ₹{item.doctorRate?.toFixed(2)}
+                        </td>
+
+                        {/* Retailer Discount */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
+                          {item.discount || 0}%
+                        </td>
+
+                        {/* Purchase Rate */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-200 font-semibold">
+                          ₹{item.purchaseRate?.toFixed(2)}
+                        </td>
+
+                        {/* CGST + SGST */}
+                        <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
+                          <div className="flex items-center justify-end gap-1">
+                            <Percent className="h-3 w-3 text-zinc-500" />
+                            <span>{((item.cgstPercent || 0) + (item.sgstPercent || 0)).toFixed(1)}%</span>
+                          </div>
+                          <div className="text-[9px] text-zinc-500">
+                            C: {item.cgstPercent || 0}% | S: {item.sgstPercent || 0}%
+                          </div>
+                        </td>
+
+                        {/* Updated At */}
+                        <td className="py-3.5 px-4 text-right text-[11px] text-zinc-500 whitespace-nowrap">
+                          {item.updatedAt 
+                            ? new Date(item.updatedAt).toLocaleString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : 'N/A'
+                          }
+                        </td>
+                      </tr>
+                    );
+                  });
                 })}
               </tbody>
             </table>

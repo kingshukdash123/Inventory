@@ -20,6 +20,7 @@ export default function AddSellingBillModal({
   const [invoiceDate, setInvoiceDate] = useState('');
   const [notes, setNotes] = useState('');
   const [fixedDiscount, setFixedDiscount] = useState('');
+  const [initialDue, setInitialDue] = useState('');
   const [prevDue, setPrevDue] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMode, setSubmitMode] = useState(''); // 'local' | 'firestore'
@@ -157,6 +158,7 @@ export default function AddSellingBillModal({
       setInvoiceDate(sellingBillToEdit.invoiceDate || new Date().toISOString().split('T')[0]);
       setNotes(sellingBillToEdit.notes || '');
       setFixedDiscount(sellingBillToEdit.summary?.fixedDiscount !== undefined && sellingBillToEdit.summary?.fixedDiscount !== null ? sellingBillToEdit.summary.fixedDiscount : (sellingBillToEdit.fixedDiscount || ''));
+      setInitialDue(sellingBillToEdit.summary?.initialDue !== undefined && sellingBillToEdit.summary?.initialDue !== null ? sellingBillToEdit.summary.initialDue : (sellingBillToEdit.initialDue || ''));
       setPrevDue(sellingBillToEdit.summary?.prevDue || 0);
       setItems(sellingBillToEdit.items && sellingBillToEdit.items.length > 0 ? sellingBillToEdit.items.map(item => ({
         ...item,
@@ -182,6 +184,7 @@ export default function AddSellingBillModal({
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setFixedDiscount('');
+      setInitialDue('');
       setPrevDue(0);
       setItems([
         {
@@ -497,7 +500,7 @@ export default function AddSellingBillModal({
 
   // Calculate live line items and bill summary
   const calculatedItems = items.map(calculateSellingLineItem);
-  const summary = calculateSellingBillSummary(calculatedItems, prevDue, fixedDiscount);
+  const summary = calculateSellingBillSummary(calculatedItems, prevDue, fixedDiscount, initialDue);
 
   const handleKeyDown = (e) => {
     if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
@@ -655,6 +658,7 @@ export default function AddSellingBillModal({
         invoiceDate,
         notes,
         fixedDiscount: Number(fixedDiscount) || 0,
+        initialDue: Number(initialDue) || 0,
         items: items
       }, sellingBillToEdit ? sellingBillToEdit.id : null, saveMode);
       onClose();
@@ -1029,19 +1033,36 @@ export default function AddSellingBillModal({
           {/* Notes Input & Financial Summary Box */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
             <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                  Fixed Discount (₹)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={fixedDiscount}
-                  onChange={(e) => setFixedDiscount(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                    Fixed Discount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={fixedDiscount}
+                    onChange={(e) => setFixedDiscount(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                    Initial Due (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={initialDue}
+                    onChange={(e) => setInitialDue(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1077,6 +1098,13 @@ export default function AddSellingBillModal({
                 <span>Prev Due:</span>
                 <span className="font-mono text-zinc-450">{formatCurrency(summary.prevDue)}</span>
               </div>
+
+              {Number(summary.initialDue) > 0 && (
+                <div className="flex justify-between text-xs text-zinc-300 font-medium">
+                  <span>Initial Due:</span>
+                  <span className="font-mono text-amber-400">+ {formatCurrency(summary.initialDue)}</span>
+                </div>
+              )}
 
               {Number(summary.fixedDiscount) > 0 && (
                 <div className="flex justify-between text-xs text-amber-400/90 font-medium">

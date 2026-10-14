@@ -1,14 +1,14 @@
 import { X, Building2, Calendar, FileText, Edit3, Package } from 'lucide-react';
 import { formatCurrency } from '../utils/calculations';
 
-export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, onEdit }) {
+export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, onEdit, zIndex = "z-50" }) {
   if (!isOpen || !sellingBill) return null;
 
   const summary = sellingBill.summary || {};
   const items = sellingBill.items || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto`}>
       <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-[95vw] lg:max-w-7xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
         
         {/* Header */}
@@ -51,16 +51,18 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                onClose();
-                if (onEdit) onEdit(sellingBill);
-              }}
-              className="flex items-center gap-1.5 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-            >
-              <Edit3 className="h-4 w-4" />
-              <span>Edit / Add Items</span>
-            </button>
+            {onEdit && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onEdit(sellingBill);
+                }}
+                className="flex items-center gap-1.5 bg-zinc-850 hover:bg-zinc-800 text-zinc-200 border border-zinc-750 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              >
+                <Edit3 className="h-4 w-4" />
+                <span>Edit / Add Items</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
@@ -158,6 +160,13 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
                 <span>Previous Due:</span>
                 <span className="font-mono text-zinc-450">{formatCurrency(summary.prevDue)}</span>
               </div>
+
+              {Number(summary.initialDue) > 0 && (
+                <div className="flex justify-between text-xs text-zinc-300 font-medium">
+                  <span>Initial Due:</span>
+                  <span className="font-mono text-amber-400">+ {formatCurrency(summary.initialDue)}</span>
+                </div>
+              )}
 
               {Number(summary.fixedDiscount) > 0 && (
                 <div className="flex justify-between text-xs text-amber-400/90 font-medium">
