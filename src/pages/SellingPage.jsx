@@ -78,11 +78,12 @@ export default function SellingPage({ searchQuery }) {
     const isDraft = saveMode === 'local';
 
     if (!isDraft) {
+      const billLabel = sellingBillData.billNo || (sellingBillData.previewBillNo ? `#${sellingBillData.previewBillNo}` : 'new invoice');
       const isConfirmed = await triggerConfirm(
         'Save Invoice Confirmation',
         existingSellingBillId && !sellingBillToEdit?.isDraft
-          ? `Are you sure you want to update and save changes to selling bill ${sellingBillData.billNo}?`
-          : `Are you sure you want to save doctor bill ${sellingBillData.billNo}? This will update medicine stock and doctor balance.`,
+          ? `Are you sure you want to update and save changes to selling bill ${billLabel}?`
+          : `Are you sure you want to save doctor bill ${billLabel}? This will update medicine stock and doctor balance.`,
         'info',
         'Save Invoice'
       );

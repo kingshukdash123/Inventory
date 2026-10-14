@@ -5,6 +5,7 @@ import { fetchStockItemsFromFirestore } from '../services/stockService';
 import { fetchDoctorsFromFirestore } from '../services/doctorService';
 import { fetchSellerDetailsFromFirestore } from '../services/settingsService';
 import { fetchSellingBillsFromFirestore } from '../services/sellingBillService';
+import { peekNextDoctorBillNumber } from '../services/billSequenceService';
 
 export default function AddSellingBillModal({ 
   isOpen, 
@@ -29,8 +30,10 @@ export default function AddSellingBillModal({
   const [submitMode, setSubmitMode] = useState(''); // 'local' | 'firestore'
   const [errorMessage, setErrorMessage] = useState('');
   const [items, setItems] = useState([]);
+  const [previewBillNo, setPreviewBillNo] = useState('');
+  const [isBillNoLoading, setIsBillNoLoading] = useState(false);
   const prevItemsLengthRef = useRef(0);
-  const billNoInputRef = useRef(null);
+  const doctorNameInputRef = useRef(null);
 
   // Seller details state dynamically loaded from Settings
   const [sellerDetails, setSellerDetails] = useState({
@@ -133,12 +136,33 @@ export default function AddSellingBillModal({
     }
   }, [isOpen]);
 
-  // Focus Bill No input on modal open
+  // Load next doctor bill number preview for new bills
+  useEffect(() => {
+    let isMounted = true;
+    if (isOpen && !sellingBillToEdit) {
+      setIsBillNoLoading(true);
+      peekNextDoctorBillNumber()
+        .then((num) => {
+          if (isMounted) setPreviewBillNo(num);
+        })
+        .catch((err) => console.error('Error peeking next bill number:', err))
+        .finally(() => {
+          if (isMounted) setIsBillNoLoading(false);
+        });
+    } else {
+      setIsBillNoLoading(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, sellingBillToEdit]);
+
+  // Focus Doctor Name input on modal open
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
-        if (billNoInputRef.current) {
-          billNoInputRef.current.focus();
+        if (doctorNameInputRef.current) {
+          doctorNameInputRef.current.focus();
         }
       }, 80);
       return () => clearTimeout(timer);
@@ -681,7 +705,8 @@ export default function AddSellingBillModal({
       setSubmitMode(saveMode);
       setErrorMessage('');
       const savedBill = await onSaveSellingBill({
-        billNo: sellingBillNo,
+        billNo: sellingBillToEdit ? sellingBillNo : '',
+        previewBillNo: previewBillNo,
         doctorId,
         doctorName,
         doctorPhone,
@@ -787,6 +812,7 @@ export default function AddSellingBillModal({
                     Doctor Name <span className="text-zinc-500">*</span>
                   </label>
                   <input
+                    ref={doctorNameInputRef}
                     type="text"
                     value={doctorName}
                     onChange={(e) => handleDoctorInputChange(e.target.value)}
@@ -871,16 +897,22 @@ export default function AddSellingBillModal({
               <div className="space-y-3">
                 <div>
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                    Bill No (Auto-Generated if empty)
+                    Bill No
                   </label>
-                  <input
-                    ref={billNoInputRef}
-                    type="text"
-                    value={sellingBillNo}
-                    onChange={(e) => setSellingBillNo(e.target.value.toUpperCase())}
-                    placeholder="E.G. SB-0001"
-                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={sellingBillToEdit ? sellingBillNo : (previewBillNo || '')}
+                      disabled
+                      placeholder={isBillNoLoading ? '' : '1001'}
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono cursor-not-allowed select-none font-semibold"
+                    />
+                    {isBillNoLoading && (
+                      <div className="absolute right-3 flex items-center pointer-events-none">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>

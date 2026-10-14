@@ -15,6 +15,7 @@ import { db } from '../config/firebase';
 import { calculateSellingBillSummary, calculateSellingLineItem } from '../utils/calculations';
 import { SellingBill } from '../models/sellingBillModel';
 import { getOrCreateDoctorByName, adjustDoctorBalances } from './doctorService';
+import { getNextDoctorBillNumber } from './billSequenceService';
 
 const COLLECTION_NAME = 'selling_bill';
 const STOCK_COLLECTION = 'stock';
@@ -169,9 +170,15 @@ export async function addSellingBillToFirestore(sellingBillData) {
 
   const billDocRef = doc(collection(db, COLLECTION_NAME));
 
+  // Determine sequential bill number (starting at 1001)
+  let assignedBillNo = sellingBillData.billNo ? String(sellingBillData.billNo).trim() : '';
+  if (!assignedBillNo || assignedBillNo.startsWith('#') || assignedBillNo.toUpperCase() === 'AUTO') {
+    assignedBillNo = await getNextDoctorBillNumber();
+  }
+
   const sellingBill = new SellingBill({
     id: billDocRef.id,
-    billNo: sellingBillData.billNo || `SB-${Date.now().toString().slice(-6)}`,
+    billNo: assignedBillNo,
     doctorId: doctorId,
     doctorName: sellingBillData.doctorName || 'Unknown Doctor',
     doctorPhone: sellingBillData.doctorPhone || '',
@@ -253,7 +260,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
 
   const sellingBill = new SellingBill({
     id: sellingBillId,
-    billNo: sellingBillData.billNo,
+    billNo: (oldBill && oldBill.billNo) ? oldBill.billNo : (sellingBillData.billNo || ''),
     doctorId: doctorId,
     doctorName: sellingBillData.doctorName,
     doctorPhone: sellingBillData.doctorPhone || '',
@@ -334,7 +341,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
 
   const publishedBill = new SellingBill({
     id: draftSellingBill.id,
-    billNo: draftSellingBill.billNo.startsWith('DRAFT-') ? draftSellingBill.billNo.replace('DRAFT-', 'SB-') : draftSellingBill.billNo,
+    billNo: draftSellingBill.billNo,
     doctorId: doctorId,
     doctorName: draftSellingBill.doctorName,
     doctorPhone: draftSellingBill.doctorPhone || '',
