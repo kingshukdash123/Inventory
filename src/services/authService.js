@@ -1,172 +1,64 @@
 import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  query, 
-  where, 
-  limit, 
-  serverTimestamp 
-} from 'firebase/firestore';
-import { db } from '../config/firebase';
-
-const USERS_COLLECTION = 'users';
+  signInWithEmailAndPassword, 
+  signOut 
+} from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 /**
- * Check if at least one user exists in the Firestore 'users' collection.
- * Useful to detect initial system setup.
+ * Helper to map Firebase Auth error codes to user-friendly messages
  */
-export async function checkAnyUserExists() {
+export function formatAuthError(error) {
+  if (!error) return 'An unexpected error occurred during authentication.';
+
+  const code = error.code || '';
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Invalid email or password. Please check your credentials and try again.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Please contact your administrator.';
+    case 'auth/too-many-requests':
+      return 'Access temporarily blocked due to repeated failed attempts. Please try again later.';
+    case 'auth/network-request-failed':
+      return 'Network connection error. Please check your internet connection.';
+    default:
+      return error.message || 'Failed to sign in. Please try again.';
+  }
+}
+
+/**
+ * Sign in using Firebase Authentication with Email and Password.
+ */
+export async function loginWithEmail(email, password) {
+  if (!email || !password) {
+    throw new Error('Please enter both your email address and password.');
+  }
+
+  const cleanEmail = email.trim();
+  if (!cleanEmail) {
+    throw new Error('Please enter a valid email address.');
+  }
+
   try {
-    const q = query(collection(db, USERS_COLLECTION), limit(1));
-    const snapshot = await getDocs(q);
-    return !snapshot.empty;
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    return userCredential.user;
   } catch (error) {
-    console.error('Error checking existing users:', error);
-    return false;
+    console.error('Firebase Auth sign-in error:', error);
+    throw new Error(formatAuthError(error), { cause: error });
   }
 }
 
 /**
- * Authenticate a user by matching userId/username and plain text password
- * against the 'users' collection in Firestore.
+ * Sign out current authenticated session from Firebase Auth.
  */
-export async function loginWithCredentials(userIdOrUsername, password) {
-  if (!userIdOrUsername || !password) {
-    throw new Error('Please enter both User ID/Username and password.');
-  }
-
-  const cleanInput = userIdOrUsername.trim();
-  const lowerInput = cleanInput.toLowerCase();
-
-  // 1. First attempt: check direct doc ID (either clean or lowercase)
+export async function logoutUser() {
   try {
-    let userDocRef = doc(db, USERS_COLLECTION, cleanInput);
-    let docSnap = await getDoc(userDocRef);
-
-    if (!docSnap.exists() && cleanInput !== lowerInput) {
-      userDocRef = doc(db, USERS_COLLECTION, lowerInput);
-      docSnap = await getDoc(userDocRef);
-    }
-
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      if (data.password === password) {
-        return {
-          id: docSnap.id,
-          userId: data.userId || data.username || docSnap.id,
-          username: data.username || data.userId || docSnap.id,
-          role: data.role || 'user',
-          createdAt: data.createdAt?.toDate?.() || null
-        };
-      } else {
-        throw new Error('Incorrect password. Please try again.');
-      }
-    }
-  } catch (err) {
-    if (err.message === 'Incorrect password. Please try again.') {
-      throw err;
-    }
-    // Continue to fallback search below
+    await signOut(auth);
+  } catch (error) {
+    console.error('Firebase Auth sign-out error:', error);
+    throw error;
   }
-
-  // 2. Fallback attempt: query by 'userId' or 'username' fields in collection
-  try {
-    const usersRef = collection(db, USERS_COLLECTION);
-    
-    // Check where userId == cleanInput
-    let q = query(usersRef, where('userId', '==', cleanInput), limit(1));
-    let snap = await getDocs(q);
-
-    // If not found, check where username == cleanInput
-    if (snap.empty) {
-      q = query(usersRef, where('username', '==', cleanInput), limit(1));
-      snap = await getDocs(q);
-    }
-
-    // If still not found and case differs, try lowercase matching
-    if (snap.empty && cleanInput !== lowerInput) {
-      q = query(usersRef, where('userId', '==', lowerInput), limit(1));
-      snap = await getDocs(q);
-      if (snap.empty) {
-        q = query(usersRef, where('username', '==', lowerInput), limit(1));
-        snap = await getDocs(q);
-      }
-    }
-
-    if (!snap.empty) {
-      const userDoc = snap.docs[0];
-      const data = userDoc.data();
-      if (data.password === password) {
-        return {
-          id: userDoc.id,
-          userId: data.userId || data.username || userDoc.id,
-          username: data.username || data.userId || userDoc.id,
-          role: data.role || 'user',
-          createdAt: data.createdAt?.toDate?.() || null
-        };
-      } else {
-        throw new Error('Incorrect password. Please try again.');
-      }
-    }
-  } catch (err) {
-    if (err.message === 'Incorrect password. Please try again.') {
-      throw err;
-    }
-    console.error('Error during fallback user query:', err);
-  }
-
-  throw new Error('User not found. Please verify your credentials or create an account.');
-}
-
-/**
- * Register/add a new user document in Firestore 'users' collection.
- * Stores userId and password as requested.
- */
-export async function registerNewUser(userId, password, role = 'admin') {
-  if (!userId || !password) {
-    throw new Error('User ID and password are required.');
-  }
-
-  const cleanUserId = userId.trim();
-  if (cleanUserId.length < 3) {
-    throw new Error('User ID must be at least 3 characters long.');
-  }
-
-  if (password.length < 4) {
-    throw new Error('Password must be at least 4 characters long.');
-  }
-
-  // Check if doc with this ID already exists
-  const docRef = doc(db, USERS_COLLECTION, cleanUserId);
-  const existing = await getDoc(docRef);
-  if (existing.exists()) {
-    throw new Error(`User "${cleanUserId}" already exists. Please choose a different ID or log in.`);
-  }
-
-  // Also verify query fallback
-  const q = query(collection(db, USERS_COLLECTION), where('userId', '==', cleanUserId), limit(1));
-  const snap = await getDocs(q);
-  if (!snap.empty) {
-    throw new Error(`User "${cleanUserId}" already exists.`);
-  }
-
-  const userData = {
-    userId: cleanUserId,
-    username: cleanUserId,
-    password: password, // stored directly as requested
-    role: role,
-    createdAt: serverTimestamp()
-  };
-
-  await setDoc(docRef, userData);
-
-  return {
-    id: cleanUserId,
-    userId: cleanUserId,
-    username: cleanUserId,
-    role: role,
-    createdAt: new Date()
-  };
 }

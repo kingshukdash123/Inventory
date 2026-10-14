@@ -6,7 +6,7 @@ export default function HalfA4BillSheet({
   sellingBill,
   sellerDetails = {}
 }) {
-  const { topHalf, bottomHalf, sheetIndex, totalSheets } = sheet;
+  const { topHalf, bottomHalf } = sheet;
 
   return (
     <div className="a4-sheet relative w-[210mm] min-w-[210mm] max-w-[210mm] h-[297mm] min-h-[297mm] max-h-[297mm] box-border bg-white text-black shadow-2xl rounded-none flex flex-col justify-between overflow-hidden print:shadow-none print:m-0 print:border-none">

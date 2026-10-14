@@ -5,7 +5,6 @@ export default function HalfA4Bill({
   pageData,
   sellingBill,
   sellerDetails = {},
-  isBottomHalf = false,
   isBlankCutPlaceholder = false
 }) {
   // Option B: If bottom half is left blank with a cutting guide

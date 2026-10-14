@@ -1,55 +1,33 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { loginWithCredentials, registerNewUser } from '../services/authService';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import { loginWithEmail, logoutUser } from '../services/authService';
 
 const AuthContext = createContext(null);
-const STORAGE_KEY = 'inventory_auth_user';
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch (e) {
-      console.error('Failed to parse stored auth user', e);
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sync state to localStorage whenever it changes
+  // Listen to Firebase Auth state changes
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [currentUser]);
-
-  const login = async (userId, password) => {
-    setLoading(true);
-    try {
-      const user = await loginWithCredentials(userId, password);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
-      return user;
-    } finally {
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (email, password) => {
+    const user = await loginWithEmail(email, password);
+    setCurrentUser(user);
+    return user;
   };
 
-  const register = async (userId, password) => {
-    setLoading(true);
-    try {
-      const user = await registerNewUser(userId, password);
-      setCurrentUser(user);
-      return user;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
+  const logout = async () => {
+    await logoutUser();
     setCurrentUser(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   const value = {
@@ -57,7 +35,6 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(currentUser),
     loading,
     login,
-    register,
     logout
   };
 

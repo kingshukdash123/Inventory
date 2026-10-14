@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt, Printer } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt } from 'lucide-react';
 import { calculateSellingLineItem, calculateSellingBillSummary, formatCurrency } from '../utils/calculations';
 import { fetchStockItemsFromFirestore } from '../services/stockService';
 import { fetchDoctorsFromFirestore } from '../services/doctorService';
@@ -643,7 +643,7 @@ export default function AddSellingBillModal({
     }
   };
 
-  const handleSubmit = async (e, saveMode = 'firestore') => {
+  const handleSubmit = async (e, saveMode = 'firestore', andPrint = false) => {
     if (e) e.preventDefault();
 
     if (!doctorName.trim()) {

@@ -8,7 +8,6 @@ import {
   Award,
   Trash2,
   Calendar,
-  Wallet,
   Loader2,
   UserCheck
 } from 'lucide-react';

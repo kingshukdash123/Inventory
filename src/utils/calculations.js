@@ -106,7 +106,7 @@ export function formatDate(dateInput) {
       return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
     }
     // Match DD/MM/YYYY or DD-MM-YYYY
-    const dmyMatch = trimmed.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+    const dmyMatch = trimmed.match(/^(\d{2})[/-](\d{2})[/-](\d{4})/);
     if (dmyMatch) {
       return `${dmyMatch[1]}/${dmyMatch[2]}/${dmyMatch[3]}`;
     }

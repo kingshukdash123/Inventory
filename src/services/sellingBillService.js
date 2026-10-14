@@ -1,15 +1,15 @@
 import {
   collection,
-  addDoc,
   getDocs,
   getDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   doc,
   query,
-  where,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { calculateSellingBillSummary, calculateSellingLineItem } from '../utils/calculations';
@@ -20,101 +20,121 @@ const COLLECTION_NAME = 'selling_bill';
 const STOCK_COLLECTION = 'stock';
 
 /**
- * Sync selling bill items to decrement from available stock
+ * Sync selling bill items to decrement from available stock using atomic batch
+ * Optionally accepts an extraBatchOps callback to bundle bill doc operations into the same commit.
  */
-export async function deductBillFromStock(sellingBill) {
-  for (const item of sellingBill.items) {
+export async function deductBillFromStock(sellingBill, extraBatchOps = null) {
+  const batch = writeBatch(db);
+  let hasUpdates = false;
+
+  if (extraBatchOps && typeof extraBatchOps === 'function') {
+    extraBatchOps(batch);
+    hasUpdates = true;
+  }
+
+  // Group line items in case bill has multiple rows for the same medicine and batch
+  const groupedItems = new Map();
+  for (const item of (sellingBill.items || [])) {
     const medName = (item.itemName || '').trim().toUpperCase();
-    const batch = (item.batchNo || '').trim().toUpperCase();
+    const batchNo = (item.batchNo || '').trim().toUpperCase();
+    const expiry = (item.expiryDate || '').trim();
+    const key = `${medName}__${batchNo}__${expiry}`;
+    if (!groupedItems.has(key)) {
+      groupedItems.set(key, { ...item, quantity: Number(item.quantity) || 0 });
+    } else {
+      groupedItems.get(key).quantity += Number(item.quantity) || 0;
+    }
+  }
+
+  const allStockSnap = await getDocs(collection(db, STOCK_COLLECTION));
+  const allStockDocs = allStockSnap.docs;
+
+  for (const item of groupedItems.values()) {
+    const medName = (item.itemName || '').trim().toUpperCase();
+    const batchNo = (item.batchNo || '').trim().toUpperCase();
     const expiry = (item.expiryDate || '').trim();
 
-    const q = query(
-      collection(db, STOCK_COLLECTION),
-      where('medicineName', '==', medName),
-      where('batchNo', '==', batch),
-      where('expiryDate', '==', expiry)
-    );
-    let querySnapshot = await getDocs(q);
+    const targetDoc = allStockDocs.find((d) => {
+      const data = d.data();
+      return (
+        (data.medicineName || '').trim().toUpperCase() === medName &&
+        (data.batchNo || '').trim().toUpperCase() === batchNo &&
+        (!expiry || (data.expiryDate || '').trim() === expiry)
+      );
+    });
 
-    let targetDocId = null;
-    let currentAvailable = 0;
-
-    if (!querySnapshot.empty) {
-      const stockDoc = querySnapshot.docs[0];
-      targetDocId = stockDoc.id;
-      currentAvailable = Number(stockDoc.data().availableQuantity) || 0;
-    } else {
-      // Case-insensitive fallback lookup across stock
-      const allStockSnap = await getDocs(collection(db, STOCK_COLLECTION));
-      const fallbackDoc = allStockSnap.docs.find((d) => {
-        const data = d.data();
-        return (
-          (data.medicineName || '').trim().toUpperCase() === medName &&
-          (data.batchNo || '').trim().toUpperCase() === batch
-        );
-      });
-      if (fallbackDoc) {
-        targetDocId = fallbackDoc.id;
-        currentAvailable = Number(fallbackDoc.data().availableQuantity) || 0;
-      }
-    }
-
-    if (targetDocId) {
+    if (targetDoc) {
+      const currentAvailable = Number(targetDoc.data().availableQuantity) || 0;
       const newAvailable = Math.max(0, currentAvailable - item.quantity);
-      await updateDoc(doc(db, STOCK_COLLECTION, targetDocId), {
+      batch.update(doc(db, STOCK_COLLECTION, targetDoc.id), {
         availableQuantity: newAvailable,
         updatedAt: serverTimestamp()
       });
+      hasUpdates = true;
     }
+  }
+
+  if (hasUpdates) {
+    await batch.commit();
   }
 }
 
 /**
- * Revert stock decrement (add sold items back to stock)
+ * Revert stock decrement (add sold items back to stock) using atomic batch
+ * Optionally accepts an extraBatchOps callback to bundle bill doc operations into the same commit.
  */
-export async function addBillBackToStock(sellingBill) {
-  for (const item of sellingBill.items) {
+export async function addBillBackToStock(sellingBill, extraBatchOps = null) {
+  const batch = writeBatch(db);
+  let hasUpdates = false;
+
+  if (extraBatchOps && typeof extraBatchOps === 'function') {
+    extraBatchOps(batch);
+    hasUpdates = true;
+  }
+
+  const groupedItems = new Map();
+  for (const item of (sellingBill.items || [])) {
     const medName = (item.itemName || '').trim().toUpperCase();
-    const batch = (item.batchNo || '').trim().toUpperCase();
+    const batchNo = (item.batchNo || '').trim().toUpperCase();
+    const expiry = (item.expiryDate || '').trim();
+    const key = `${medName}__${batchNo}__${expiry}`;
+    if (!groupedItems.has(key)) {
+      groupedItems.set(key, { ...item, quantity: Number(item.quantity) || 0 });
+    } else {
+      groupedItems.get(key).quantity += Number(item.quantity) || 0;
+    }
+  }
+
+  const allStockSnap = await getDocs(collection(db, STOCK_COLLECTION));
+  const allStockDocs = allStockSnap.docs;
+
+  for (const item of groupedItems.values()) {
+    const medName = (item.itemName || '').trim().toUpperCase();
+    const batchNo = (item.batchNo || '').trim().toUpperCase();
     const expiry = (item.expiryDate || '').trim();
 
-    const q = query(
-      collection(db, STOCK_COLLECTION),
-      where('medicineName', '==', medName),
-      where('batchNo', '==', batch),
-      where('expiryDate', '==', expiry)
-    );
-    let querySnapshot = await getDocs(q);
+    const targetDoc = allStockDocs.find((d) => {
+      const data = d.data();
+      return (
+        (data.medicineName || '').trim().toUpperCase() === medName &&
+        (data.batchNo || '').trim().toUpperCase() === batchNo &&
+        (!expiry || (data.expiryDate || '').trim() === expiry)
+      );
+    });
 
-    let targetDocId = null;
-    let currentAvailable = 0;
-
-    if (!querySnapshot.empty) {
-      const stockDoc = querySnapshot.docs[0];
-      targetDocId = stockDoc.id;
-      currentAvailable = Number(stockDoc.data().availableQuantity) || 0;
-    } else {
-      const allStockSnap = await getDocs(collection(db, STOCK_COLLECTION));
-      const fallbackDoc = allStockSnap.docs.find((d) => {
-        const data = d.data();
-        return (
-          (data.medicineName || '').trim().toUpperCase() === medName &&
-          (data.batchNo || '').trim().toUpperCase() === batch
-        );
-      });
-      if (fallbackDoc) {
-        targetDocId = fallbackDoc.id;
-        currentAvailable = Number(fallbackDoc.data().availableQuantity) || 0;
-      }
-    }
-
-    if (targetDocId) {
+    if (targetDoc) {
+      const currentAvailable = Number(targetDoc.data().availableQuantity) || 0;
       const newAvailable = currentAvailable + item.quantity;
-      await updateDoc(doc(db, STOCK_COLLECTION, targetDocId), {
+      batch.update(doc(db, STOCK_COLLECTION, targetDoc.id), {
         availableQuantity: newAvailable,
         updatedAt: serverTimestamp()
       });
+      hasUpdates = true;
     }
+  }
+
+  if (hasUpdates) {
+    await batch.commit();
   }
 }
 
@@ -147,7 +167,10 @@ export async function addSellingBillToFirestore(sellingBillData) {
   const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, initialDue);
   const isDraft = !!sellingBillData.isDraft;
 
+  const billDocRef = doc(collection(db, COLLECTION_NAME));
+
   const sellingBill = new SellingBill({
+    id: billDocRef.id,
     billNo: sellingBillData.billNo || `SB-${Date.now().toString().slice(-6)}`,
     doctorId: doctorId,
     doctorName: sellingBillData.doctorName || 'Unknown Doctor',
@@ -164,23 +187,23 @@ export async function addSellingBillToFirestore(sellingBillData) {
     stockSynced: false
   });
 
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), sellingBill.toJson());
-  sellingBill.id = docRef.id;
-
   if (!isDraft) {
-    await deductBillFromStock(sellingBill);
+    sellingBill.stockSynced = true;
+    // Commit the selling bill document and all stock deductions in the exact same atomic writeBatch
+    await deductBillFromStock(sellingBill, (batch) => {
+      batch.set(billDocRef, sellingBill.toJson());
+    });
+
     if (doctorId) {
       const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
       await adjustDoctorBalances(doctorId, billNet, 0);
     }
-    await updateDoc(doc(db, COLLECTION_NAME, docRef.id), {
-      stockSynced: true
-    });
-    sellingBill.stockSynced = true;
+  } else {
+    await setDoc(billDocRef, sellingBill.toJson());
   }
 
   return SellingBill.fromJson({
-    id: docRef.id,
+    id: billDocRef.id,
     ...sellingBill.toJson(),
     createdAt: new Date().toISOString()
   });
@@ -255,20 +278,25 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     }
   }
 
+  const payload = sellingBill.toJson();
+  delete payload.createdAt;
+
   // Apply new published bill stock & doctor totals
   if (!isDraft) {
-    await deductBillFromStock(sellingBill);
+    sellingBill.stockSynced = true;
+    payload.stockSynced = true;
+    // Commit stock deduction and bill doc update in the same atomic writeBatch
+    await deductBillFromStock(sellingBill, (batch) => {
+      batch.update(docRef, payload);
+    });
+
     if (doctorId) {
       const newBillNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + newInitialDue;
       await adjustDoctorBalances(doctorId, newBillNet, 0);
     }
-    sellingBill.stockSynced = true;
+  } else {
+    await updateDoc(docRef, payload);
   }
-
-  const payload = sellingBill.toJson();
-  delete payload.createdAt;
-
-  await updateDoc(docRef, payload);
 
   return SellingBill.fromJson({
     id: sellingBillId,
@@ -318,20 +346,21 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     items: formattedItems,
     summary: summary,
     isDraft: false,
-    stockSynced: false
+    stockSynced: true
   });
-
-  await deductBillFromStock(publishedBill);
-  if (doctorId) {
-    const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
-    await adjustDoctorBalances(doctorId, billNet, 0);
-  }
-  publishedBill.stockSynced = true;
 
   const payload = publishedBill.toJson();
   delete payload.createdAt;
 
-  await updateDoc(docRef, payload);
+  // Commit published status update and stock deduction together atomically
+  await deductBillFromStock(publishedBill, (batch) => {
+    batch.update(docRef, payload);
+  });
+
+  if (doctorId) {
+    const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
+    await adjustDoctorBalances(doctorId, billNet, 0);
+  }
 
   return SellingBill.fromJson({
     id: draftSellingBill.id,
@@ -418,15 +447,20 @@ export async function deleteSellingBillFromFirestore(sellingBillId) {
       const oldBill = SellingBill.fromJson({ id: docSnap.id, ...data });
 
       if (!oldBill.isDraft && oldBill.stockSynced) {
-        await addBillBackToStock(oldBill);
+        // Stock replenishment and bill deletion in the exact same atomic writeBatch
+        await addBillBackToStock(oldBill, (batch) => {
+          batch.delete(docRef);
+        });
+
         if (oldBill.doctorId) {
           const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
           const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
           await adjustDoctorBalances(oldBill.doctorId, -oldBillNet, 0);
         }
+      } else {
+        await deleteDoc(docRef);
       }
     }
-    await deleteDoc(docRef);
     return true;
   } catch (error) {
     console.error('Error deleting selling bill:', error);

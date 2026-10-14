@@ -140,7 +140,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 transition-colors"
-              title={`Sign Out (${currentUser.username || currentUser.userId})`}
+              title={`Sign Out (${currentUser.email || 'Admin'})`}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -152,7 +152,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-zinc-200 truncate font-mono">
-                    {currentUser.username || currentUser.userId}
+                    {currentUser.email || 'Admin'}
                   </div>
                   <div className="text-[10px] text-zinc-500 flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>

@@ -1,20 +1,18 @@
 import {
   collection,
   getDocs,
-  getDoc,
   doc,
-  addDoc,
-  deleteDoc,
   query,
   orderBy,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  runTransaction
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { DoctorPayment } from '../models/paymentModel';
-import { adjustDoctorBalances } from './doctorService';
 
 const COLLECTION_NAME = 'payments';
+const DOCTORS_COLLECTION = 'doctors';
 
 /**
  * Fetch all payments sorted by creation date descending
@@ -58,57 +56,98 @@ export function subscribePayments(onUpdate) {
 }
 
 /**
- * Record a new payment and update the doctor's balances atomically
+ * Record a new payment and update the doctor's balances atomically in a single transaction
  */
 export async function addPaymentToFirestore(paymentData) {
-  const payment = new DoctorPayment({
-    doctorId: paymentData.doctorId,
-    doctorName: paymentData.doctorName,
-    amount: Number(paymentData.amount) || 0,
-    paymentDate: paymentData.paymentDate || new Date().toISOString().split('T')[0],
-    paymentMode: paymentData.paymentMode || 'Cash',
-    notes: paymentData.notes || '',
-    createdAt: serverTimestamp()
+  const paymentAmount = Number(paymentData.amount) || 0;
+  const paymentDocRef = doc(collection(db, COLLECTION_NAME));
+  const doctorDocRef = paymentData.doctorId ? doc(db, DOCTORS_COLLECTION, paymentData.doctorId) : null;
+
+  await runTransaction(db, async (transaction) => {
+    let doctorData = null;
+    if (doctorDocRef) {
+      const doctorSnap = await transaction.get(doctorDocRef);
+      if (doctorSnap.exists()) {
+        doctorData = doctorSnap.data();
+      }
+    }
+
+    // 1. Write the payment document
+    const payment = new DoctorPayment({
+      id: paymentDocRef.id,
+      doctorId: paymentData.doctorId || '',
+      doctorName: paymentData.doctorName || '',
+      amount: paymentAmount,
+      paymentDate: paymentData.paymentDate || new Date().toISOString().split('T')[0],
+      paymentMode: paymentData.paymentMode || 'Cash',
+      notes: paymentData.notes || '',
+      createdAt: serverTimestamp()
+    });
+
+    transaction.set(paymentDocRef, payment.toJson());
+
+    // 2. Atomically adjust doctor's balances within the exact same transaction
+    if (doctorDocRef && doctorData) {
+      const purchasedAmount = Number(Number(doctorData.purchasedAmount || 0).toFixed(2));
+      const paidAmount = Number((Number(doctorData.paidAmount || 0) + paymentAmount).toFixed(2));
+      const dueAmount = Number((purchasedAmount - paidAmount).toFixed(2));
+
+      transaction.update(doctorDocRef, {
+        purchasedAmount,
+        paidAmount,
+        dueAmount,
+        updatedAt: serverTimestamp()
+      });
+    }
   });
 
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), payment.toJson());
-  
-  if (payment.doctorId) {
-    // Increment paidAmount by payment.amount
-    await adjustDoctorBalances(payment.doctorId, 0, payment.amount);
-  }
-
   return DoctorPayment.fromJson({
-    id: docRef.id,
-    ...payment.toJson(),
+    id: paymentDocRef.id,
+    ...paymentData,
+    amount: paymentAmount,
     createdAt: new Date().toISOString()
   });
 }
 
 /**
- * Delete a payment, revert the doctor's paid balance, and remove the transaction
+ * Delete a payment and revert the doctor's balance atomically in a single transaction
  */
 export async function deletePaymentFromFirestore(paymentId) {
+  const paymentDocRef = doc(db, COLLECTION_NAME, paymentId);
+
   try {
-    const docRef = doc(db, COLLECTION_NAME, paymentId);
-    const docSnap = await getDoc(docRef);
+    await runTransaction(db, async (transaction) => {
+      const paymentSnap = await transaction.get(paymentDocRef);
+      if (!paymentSnap.exists()) return;
 
-    if (docSnap.exists()) {
-      const payment = DoctorPayment.fromJson({
-        id: docSnap.id,
-        ...docSnap.data()
-      });
+      const paymentData = paymentSnap.data();
+      const paymentAmount = Number(paymentData.amount) || 0;
 
-      if (payment.doctorId) {
-        // Revert paidAmount by subtracting the payment.amount
-        await adjustDoctorBalances(payment.doctorId, 0, -payment.amount);
+      if (paymentData.doctorId) {
+        const doctorDocRef = doc(db, DOCTORS_COLLECTION, paymentData.doctorId);
+        const doctorSnap = await transaction.get(doctorDocRef);
+
+        if (doctorSnap.exists()) {
+          const doctorData = doctorSnap.data();
+          const purchasedAmount = Number(Number(doctorData.purchasedAmount || 0).toFixed(2));
+          const paidAmount = Number((Number(doctorData.paidAmount || 0) - paymentAmount).toFixed(2));
+          const dueAmount = Number((purchasedAmount - paidAmount).toFixed(2));
+
+          transaction.update(doctorDocRef, {
+            purchasedAmount,
+            paidAmount,
+            dueAmount,
+            updatedAt: serverTimestamp()
+          });
+        }
       }
-    }
 
-    await deleteDoc(docRef);
+      transaction.delete(paymentDocRef);
+    });
+
     return true;
   } catch (error) {
-    console.error('Error deleting payment from Firestore:', error);
+    console.error('Error deleting payment atomically from Firestore:', error);
     throw error;
   }
 }

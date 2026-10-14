@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import { DialogProvider } from './context/DialogContext';
@@ -15,10 +16,20 @@ import InventoryPage from './pages/InventoryPage';
 import SettingsPage from './pages/SettingsPage';
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Show clean spinner while Firebase Auth is checking existing session
+  if (loading) {
+    return (
+      <div className="h-screen w-screen bg-zinc-950 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 text-zinc-400 animate-spin" />
+        <span className="text-xs text-zinc-500 font-mono">Loading session...</span>
+      </div>
+    );
+  }
 
   // If not authenticated, lock the entire app and render the login page
   if (!isAuthenticated) {

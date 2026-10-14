@@ -72,7 +72,7 @@ export default function InventoryPage({ searchQuery = '' }) {
       const positiveBatches = batches.filter(b => (Number(b.availableQuantity) || 0) > 0);
       const zeroBatches = batches.filter(b => (Number(b.availableQuantity) || 0) <= 0);
 
-      let resolvedBatches = [];
+      let resolvedBatches;
 
       if (positiveBatches.length > 0) {
         // If there are batches with positive stock, eliminate all 0-qty batches

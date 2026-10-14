@@ -221,10 +221,10 @@ export default function SettingsPage() {
             </div>
             <div>
               <div className="text-xs font-semibold text-zinc-100 font-mono">
-                {currentUser?.username || currentUser?.userId || 'User'}
+                {currentUser?.email || 'Admin'}
               </div>
               <div className="text-[11px] text-zinc-500">
-                Logged In
+                Logged In (Firebase)
               </div>
             </div>
           </div>
