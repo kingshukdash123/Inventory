@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import { DialogProvider } from './context/DialogContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './pages/LoginPage';
 
 // Page Components
 import DashboardPage from './pages/DashboardPage';
@@ -10,75 +12,88 @@ import CollectionPage from './pages/CollectionPage';
 import SellingPage from './pages/SellingPage';
 import PaymentCollectionPage from './pages/PaymentCollectionPage';
 import InventoryPage from './pages/InventoryPage';
-import SuppliersPage from './pages/SuppliersPage';
-import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 
-export default function App() {
+function AppContent() {
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  return (
-    <DialogProvider>
-      <div className="h-screen w-screen bg-zinc-950 text-zinc-100 flex font-sans antialiased selection:bg-white selection:text-black overflow-hidden">
-        {/* Mobile Sidebar Overlay */}
-        {isSidebarOpen && (
-          <div 
-            onClick={() => setIsSidebarOpen(false)} 
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden"
-          />
-        )}
+  // If not authenticated, lock the entire app and render the login page
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
-        {/* Sidebar Navigation */}
-        <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+  return (
+    <div className="h-screen w-screen bg-zinc-950 text-zinc-100 flex font-sans antialiased selection:bg-white selection:text-black overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden"
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <Navbar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
         />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-          <Navbar
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
-          />
+        <main className="flex-1 overflow-y-auto">
+          <Routes>
+            {/* Default Route: Dashboard */}
+            <Route path="/" element={<DashboardPage />} />
 
-          <main className="flex-1 overflow-y-auto">
-            <Routes>
-              {/* Default Route: Dashboard */}
-              <Route path="/" element={<DashboardPage />} />
+            {/* Medicine Collection Page */}
+            <Route path="/collection_bill" element={<CollectionPage searchQuery={searchQuery} />} />
 
-              {/* Medicine Collection Page */}
-              <Route path="/collection_bill" element={<CollectionPage searchQuery={searchQuery} />} />
+            {/* Medicine Selling Page */}
+            <Route path="/selling_bill" element={<SellingPage searchQuery={searchQuery} />} />
 
-              {/* Medicine Selling Page */}
-              <Route path="/selling_bill" element={<SellingPage searchQuery={searchQuery} />} />
+            {/* Doctor Details & Balances Page */}
+            <Route path="/doctors" element={<PaymentCollectionPage searchQuery={searchQuery} />} />
+            <Route path="/payments" element={<Navigate to="/doctors" replace />} />
 
-              {/* Doctor Details & Balances Page */}
-              <Route path="/doctors" element={<PaymentCollectionPage searchQuery={searchQuery} />} />
-              <Route path="/payments" element={<Navigate to="/doctors" replace />} />
+            {/* Medicine Stock Page */}
+            <Route path="/stock" element={<InventoryPage searchQuery={searchQuery} />} />
 
-              {/* Medicine Stock Page */}
-              <Route path="/stock" element={<InventoryPage searchQuery={searchQuery} />} />
+            {/* Pharma Suppliers Page (Redirected to Stock) */}
+            <Route path="/suppliers" element={<Navigate to="/stock" replace />} />
 
-              {/* Pharma Suppliers Page (Redirected to Stock) */}
-              <Route path="/suppliers" element={<Navigate to="/stock" replace />} />
+            {/* Tax & Analytics Page (Redirected to Dashboard) */}
+            <Route path="/analytics" element={<Navigate to="/" replace />} />
 
-              {/* Tax & Analytics Page (Redirected to Dashboard) */}
-              <Route path="/analytics" element={<Navigate to="/" replace />} />
+            {/* System Preferences Page */}
+            <Route path="/settings" element={<SettingsPage />} />
 
-              {/* System Preferences Page */}
-              <Route path="/settings" element={<SettingsPage />} />
-
-              {/* Fallback Route */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </main>
-        </div>
+            {/* Fallback Route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </div>
-    </DialogProvider>
+    </div>
   );
 }
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <DialogProvider>
+        <AppContent />
+      </DialogProvider>
+    </AuthProvider>
+  );
+}
+

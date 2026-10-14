@@ -14,13 +14,13 @@ export default function Navbar({ searchQuery, setSearchQuery, onToggleSidebar })
         </button>
 
         {/* Search Input */}
-        <div className="relative w-64 sm:w-96">
+        <div className="relative w-64 sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search..."
+            placeholder="Search across inventory..."
             className="w-full bg-zinc-900 border border-zinc-800 focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 outline-none transition-all"
           />
         </div>

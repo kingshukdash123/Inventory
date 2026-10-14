@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, ShieldAlert, Loader2 } from 'lucide-react';
+import { Settings, Save, ShieldAlert, Loader2, User, LogOut } from 'lucide-react';
 import { useDialog } from '../context/DialogContext';
+import { useAuth } from '../context/AuthContext';
 import { fetchSellerDetailsFromFirestore, saveSellerDetailsToFirestore } from '../services/settingsService';
 
 export default function SettingsPage() {
@@ -11,7 +12,17 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
-  const { triggerAlert } = useDialog();
+  const { triggerAlert, triggerConfirm } = useDialog();
+  const { currentUser, logout } = useAuth();
+
+  const handleLogoutFromSettings = async () => {
+    const confirmed = await triggerConfirm('Sign Out', 'Are you sure you want to log out?', 'warning', 'Sign Out');
+    if (confirmed) {
+      logout();
+    }
+  };
+
+
 
   useEffect(() => {
     async function loadSettings() {
@@ -200,6 +211,36 @@ export default function SettingsPage() {
           </div>
         </form>
       )}
+
+      {/* Account Section */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-zinc-850 border border-zinc-700/60 flex items-center justify-center text-zinc-200">
+              <User className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-zinc-100 font-mono">
+                {currentUser?.username || currentUser?.userId || 'User'}
+              </div>
+              <div className="text-[11px] text-zinc-500">
+                Logged In
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogoutFromSettings}
+            className="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-medium px-3.5 py-2 rounded-lg transition-colors cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
+
+

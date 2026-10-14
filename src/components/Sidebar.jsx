@@ -9,10 +9,31 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  LogOut,
+  User
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
+
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
+  const { currentUser, logout } = useAuth();
+  const { triggerConfirm } = useDialog();
+
+  const handleLogout = async () => {
+    const confirmed = await triggerConfirm(
+      'Sign Out',
+      'Are you sure you want to log out of the system?',
+      'warning',
+      'Sign Out'
+    );
+    if (confirmed) {
+      onClose();
+      logout();
+    }
+  };
+
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/collection_bill', label: 'Medicine Collection', icon: Receipt },
@@ -21,6 +42,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     { path: '/stock', label: 'Medicine Stock', icon: Package },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
+
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 bg-zinc-950 border-r border-zinc-800 flex flex-col justify-between h-screen lg:h-full shrink-0 text-zinc-300 select-none transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
@@ -110,6 +132,46 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
           })}
         </nav>
       </div>
+
+      {/* User profile & Logout Footer */}
+      {currentUser && (
+        <div className={`p-3 border-t border-zinc-800/80 bg-zinc-950/80 ${isCollapsed ? 'flex justify-center' : ''}`}>
+          {isCollapsed ? (
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 transition-colors"
+              title={`Sign Out (${currentUser.username || currentUser.userId})`}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="h-8 w-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+                  <User className="h-4 w-4 text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-zinc-200 truncate font-mono">
+                    {currentUser.username || currentUser.userId}
+                  </div>
+                  <div className="text-[10px] text-zinc-500 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Signed In</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 transition-colors shrink-0"
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }
+
