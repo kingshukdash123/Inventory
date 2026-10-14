@@ -171,9 +171,9 @@ export default function HalfA4Bill({
       {/* Continuation Notice if not final page */}
       {!isFinal && (
         <div className="flex items-center justify-between border border-zinc-300 bg-zinc-50 px-3 py-1 text-[9px] font-bold text-black mt-1">
-          <span>Page {pageNumber} Subtotal ({items.length} items): ₹{pageSubtotal.toFixed(2)}</span>
+          <span>Subtotal: ₹{pageSubtotal.toFixed(2)}</span>
           <span className="text-zinc-600 font-medium">
-            ... Continued on next half-page (Page {pageNumber + 1}) ➔
+            ... Continued on next page (Page {pageNumber + 1}) ➔
           </span>
         </div>
       )}

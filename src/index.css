@@ -93,13 +93,37 @@ body {
     overflow: visible !important;
   }
 
-  body * {
-    visibility: hidden !important;
+  /* Reset all app containers so they don't clip printable content */
+  #root,
+  #root > div,
+  main {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+    transform: none !important;
   }
 
+  body * {
+    visibility: hidden;
+  }
+
+  .a4-sheet,
+  .a4-sheet *,
+  .half-a4-bill,
+  .half-a4-bill *,
   #printable-bill-area,
   #printable-bill-area * {
     visibility: visible !important;
+  }
+
+  .print\:hidden,
+  [class*="print:hidden"],
+  .print-hidden {
+    display: none !important;
+    visibility: hidden !important;
   }
 
   #printable-bill-area {

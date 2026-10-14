@@ -39,7 +39,9 @@ export default function BillPreviewModal({
   });
 
   const duplicateIfSingle = false; // Default to Option B: Top Half only
-  const itemsPerFirstHalf = 8;
+  const itemsPerSingleHalf = 12;
+  const itemsPerContinuationHalf = 16;
+  const itemsPerFinalHalf = 12;
 
   const containerRef = useRef(null);
 
@@ -82,8 +84,132 @@ export default function BillPreviewModal({
   const handlePrint = useCallback(() => {
     const docName = (sellingBill?.doctorName || 'Doctor').replace(/[<>:"/\\|?*]/g, '').trim();
     const billNum = (sellingBill?.billNo || 'Bill').replace(/[<>:"/\\|?*]/g, '').trim();
-    document.title = `${docName}_${billNum}`;
-    window.print();
+    const printTitle = `${docName}_${billNum}`;
+    document.title = printTitle;
+
+    const printableArea = document.getElementById('printable-bill-area');
+    if (!printableArea) {
+      window.print();
+      return;
+    }
+
+    // Remove any previously created print iframe
+    const existingIframe = document.getElementById('print-invoice-iframe');
+    if (existingIframe) {
+      existingIframe.remove();
+    }
+
+    // Create a hidden print iframe to isolate print rendering from app layout/modals
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-invoice-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-9999px';
+    iframe.style.left = '-9999px';
+    iframe.style.width = '210mm';
+    iframe.style.height = '297mm';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    document.body.appendChild(iframe);
+
+    const frameDoc = iframe.contentWindow.document;
+    frameDoc.open();
+
+    // Grab all stylesheet links and style tags from current document
+    const headStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(node => node.outerHTML)
+      .join('\n');
+
+    frameDoc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${printTitle}</title>
+          ${headStyles}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            *, *::before, *::after {
+              visibility: visible !important;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              visibility: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .a4-sheet {
+              width: 210mm !important;
+              min-width: 210mm !important;
+              max-width: 210mm !important;
+              height: 297mm !important;
+              min-height: 297mm !important;
+              max-height: 297mm !important;
+              page-break-after: always !important;
+              break-after: page !important;
+              box-sizing: border-box !important;
+              background: #ffffff !important;
+              border: none !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              visibility: visible !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+            }
+            .a4-sheet:last-child {
+              page-break-after: auto !important;
+              break-after: auto !important;
+            }
+            .half-a4-bill {
+              width: 210mm !important;
+              min-width: 210mm !important;
+              max-width: 210mm !important;
+              height: 148.5mm !important;
+              min-height: 148.5mm !important;
+              max-height: 148.5mm !important;
+              overflow: hidden !important;
+              box-sizing: border-box !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              background: #ffffff !important;
+              visibility: visible !important;
+            }
+            .print\\:hidden, [class*="print:hidden"], .print-hidden {
+              display: none !important;
+              visibility: hidden !important;
+            }
+          </style>
+        </head>
+        <body style="background: #ffffff; color: #000000; margin: 0; padding: 0;">
+          <div id="printable-bill-area" style="width: 210mm; margin: 0 auto;">
+            ${printableArea.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    frameDoc.close();
+
+    // Allow stylesheets to load, then trigger print dialog
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (err) {
+        console.warn('Iframe print error, falling back to window.print():', err);
+        window.print();
+      }
+      setTimeout(() => {
+        try {
+          iframe.remove();
+        } catch {}
+      }, 3000);
+    }, 300);
   }, [sellingBill]);
 
   // Handle keyboard shortcuts (Escape to close, Ctrl+P to print)
@@ -109,8 +235,9 @@ export default function BillPreviewModal({
 
   // Generate paginated physical A4 sheets
   const sheets = paginateSellingBill(items, {
-    itemsPerFirstHalf,
-    itemsPerContinuationHalf: 12,
+    itemsPerSingleHalf,
+    itemsPerContinuationHalf,
+    itemsPerFinalHalf,
     duplicateIfSingle
   });
 
@@ -211,6 +338,7 @@ export default function BillPreviewModal({
         className="flex-1 overflow-auto p-8 flex justify-center bg-zinc-950/60 print:p-0 print:m-0 print:overflow-visible print:bg-white"
       >
         <div 
+          id="printable-bill-area"
           style={{
             transform: `scale(${zoomLevel})`,
             transformOrigin: 'top center'

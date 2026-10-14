@@ -5,8 +5,9 @@
 
 export function paginateSellingBill(items = [], options = {}) {
   const {
-    itemsPerFirstHalf = 8,       // Max items on the half that includes the Bill Summary box
-    itemsPerContinuationHalf = 12, // Max items on continuation halves (no summary box)
+    itemsPerSingleHalf = options.itemsPerFirstHalf || 12,       // Max items on a single half-page (includes Bill Summary box)
+    itemsPerContinuationHalf = options.itemsPerContinuationHalf || 16, // Max items on continuation halves (no summary box)
+    itemsPerFinalHalf = options.itemsPerFirstHalf || 12,        // Max items on final half of multi-page bill (includes summary box)
     duplicateIfSingle = false     // User setting: Option B is false (blank bottom with cut guide)
   } = options;
 
@@ -34,20 +35,9 @@ export function paginateSellingBill(items = [], options = {}) {
     ];
   }
 
-  // Determine total half-pages needed
-  let totalPages = 1;
-  if (totalItems > itemsPerFirstHalf) {
-    const extraItems = totalItems - itemsPerFirstHalf;
-    const extraPages = Math.ceil(extraItems / itemsPerContinuationHalf);
-    totalPages = 1 + extraPages;
-  }
-
-  // Calculate items per page with balanced distribution
-  const pageChunks = [];
-  let itemOffset = 0;
-
-  if (totalPages === 1) {
-    pageChunks.push({
+  // Case 1: Fits completely on a single half-page (with summary box)
+  if (totalItems <= itemsPerSingleHalf) {
+    const singleHalf = {
       pageNumber: 1,
       totalPages: 1,
       items: items,
@@ -55,46 +45,61 @@ export function paginateSellingBill(items = [], options = {}) {
       isFinal: true,
       isContinuation: false,
       copyLabel: 'ORIGINAL'
-    });
-  } else {
-    // Balance items across pages so final page is <= itemsPerFirstHalf and continuation pages <= itemsPerContinuationHalf
-    const finalItemsCount = Math.min(
-      itemsPerFirstHalf,
-      Math.max(1, Math.ceil(totalItems / totalPages))
-    );
-    let remainingForCont = totalItems - finalItemsCount;
-    const contPagesCount = totalPages - 1;
+    };
 
-    for (let p = 0; p < contPagesCount; p++) {
-      const remainingPages = contPagesCount - p;
-      const count = Math.min(itemsPerContinuationHalf, Math.ceil(remainingForCont / remainingPages));
-      const pageItems = items.slice(itemOffset, itemOffset + count);
-      
+    return [
+      {
+        sheetIndex: 1,
+        totalSheets: 1,
+        topHalf: singleHalf,
+        bottomHalf: duplicateIfSingle ? { ...singleHalf, copyLabel: 'DUPLICATE FOR SUPPLIER' } : null
+      }
+    ];
+  }
+
+  // Case 2: Multi-page bill — Fill each half sequentially/greedily (1st half completely filled first)
+  const extraItems = totalItems - itemsPerFinalHalf;
+  const totalPages = 1 + Math.ceil(extraItems / itemsPerContinuationHalf);
+
+  const pageChunks = [];
+  let itemOffset = 0;
+
+  for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+    const isLastPage = pageNum === totalPages;
+    const remainingItems = totalItems - itemOffset;
+
+    if (isLastPage) {
+      // Final page gets remaining items and contains the summary box
       pageChunks.push({
-        pageNumber: p + 1,
+        pageNumber: pageNum,
         totalPages,
-        items: pageItems,
+        items: items.slice(itemOffset),
         startIndex: itemOffset,
-        isFinal: false,
-        isContinuation: p > 0,
+        isFinal: true,
+        isContinuation: true,
         copyLabel: 'ORIGINAL'
       });
-
-      itemOffset += count;
-      remainingForCont -= count;
+      break;
     }
 
-    // Final page gets remaining items and contains the summary box
-    const finalItems = items.slice(itemOffset);
+    // Continuation page: Fill completely up to itemsPerContinuationHalf,
+    // leaving at least 1 item for each remaining page.
+    const pagesLeftAfterThis = totalPages - pageNum;
+    const maxCanTake = remainingItems - pagesLeftAfterThis;
+    const count = Math.min(itemsPerContinuationHalf, maxCanTake);
+    const pageItems = items.slice(itemOffset, itemOffset + count);
+
     pageChunks.push({
-      pageNumber: totalPages,
+      pageNumber: pageNum,
       totalPages,
-      items: finalItems,
+      items: pageItems,
       startIndex: itemOffset,
-      isFinal: true,
-      isContinuation: true,
+      isFinal: false,
+      isContinuation: pageNum > 1,
       copyLabel: 'ORIGINAL'
     });
+
+    itemOffset += count;
   }
 
   // Group half-pages into physical A4 sheets (2 halves per sheet)
