@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt, Printer } from 'lucide-react';
 import { calculateSellingLineItem, calculateSellingBillSummary, formatCurrency } from '../utils/calculations';
 import { fetchStockItemsFromFirestore } from '../services/stockService';
 import { fetchDoctorsFromFirestore } from '../services/doctorService';
@@ -10,6 +10,7 @@ export default function AddSellingBillModal({
   isOpen, 
   onClose, 
   onSaveSellingBill, 
+  onPrint,
   sellingBillToEdit = null,
   sellingBills = []
 }) {
@@ -679,7 +680,7 @@ export default function AddSellingBillModal({
       setIsSubmitting(true);
       setSubmitMode(saveMode);
       setErrorMessage('');
-      await onSaveSellingBill({
+      const savedBill = await onSaveSellingBill({
         billNo: sellingBillNo,
         doctorId,
         doctorName,
@@ -692,7 +693,12 @@ export default function AddSellingBillModal({
         initialDue: Number(initialDue) || 0,
         items: items
       }, sellingBillToEdit ? sellingBillToEdit.id : null, saveMode);
+      
       onClose();
+
+      if (andPrint && onPrint && savedBill) {
+        onPrint(savedBill);
+      }
     } catch (err) {
       setErrorMessage(err.message || 'Failed to save selling bill.');
     } finally {
@@ -1241,7 +1247,7 @@ export default function AddSellingBillModal({
               type="button"
               onClick={(e) => handleSubmit(e, 'firestore')}
               disabled={isSubmitting}
-              className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-bold px-5 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50"
+              className="flex items-center gap-2 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-bold px-5 py-2 rounded-lg shadow-sm transition-all disabled:opacity-50 active:scale-95 border border-zinc-200/20"
             >
               {isSubmitting && submitMode === 'firestore' ? (
                 <Loader2 className="h-4 w-4 animate-spin text-zinc-950" />
@@ -1251,7 +1257,7 @@ export default function AddSellingBillModal({
               <span>
                 {isSubmitting && submitMode === 'firestore'
                   ? 'Saving...'
-                  : sellingBillToEdit ? 'Save Bill' : 'Save Bill'}
+                  : sellingBillToEdit ? 'Save Changes' : 'Save Bill'}
               </span>
             </button>
           </div>

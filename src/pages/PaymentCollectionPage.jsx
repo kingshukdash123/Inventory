@@ -9,7 +9,8 @@ import {
   Trash2,
   Calendar,
   Wallet,
-  Loader2
+  Loader2,
+  UserCheck
 } from 'lucide-react';
 import { useDialog } from '../context/DialogContext';
 import { fetchDoctorsFromFirestore, subscribeDoctors } from '../services/doctorService';
@@ -184,8 +185,8 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-zinc-100 tracking-tight flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-zinc-400" />
-            Payment Collections & Doctor Balances
+            <UserCheck className="h-5 w-5 text-zinc-400" />
+            Doctor Details
           </h2>
           <p className="text-xs text-zinc-400 mt-1">
             Track per-doctor analytical purchase history, record payments, and manage outstanding balances.
@@ -330,10 +331,15 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60 font-medium">
                   {filteredDoctors.map((docObj) => (
-                    <tr key={docObj.id} className="hover:bg-zinc-800/40 transition-colors">
+                    <tr 
+                      key={docObj.id} 
+                      onClick={() => handleOpenHistoryModal(docObj)}
+                      className="hover:bg-zinc-800/40 transition-colors cursor-pointer group"
+                      title="Click to view doctor history and analytical transactions"
+                    >
                       <td className="py-4 px-6 text-zinc-150">
-                        <div className="font-bold uppercase tracking-wide">
-                          Dr. {docObj.name}
+                        <div className="font-bold uppercase tracking-wide group-hover:text-blue-400 group-hover:underline transition-colors flex items-center gap-1.5">
+                          <span>Dr. {docObj.name}</span>
                         </div>
                         {docObj.phone && (
                           <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
@@ -350,22 +356,17 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                       <td className="py-4 px-6 text-right font-mono font-bold text-amber-400 text-sm">
                         {formatCurrency(docObj.dueAmount)}
                       </td>
-                      <td className="py-4 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="py-4 px-6 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center">
                           <button
-                            onClick={() => handleOpenPaymentModal(docObj)}
-                            className="flex items-center gap-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-100 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenPaymentModal(docObj);
+                            }}
+                            className="flex items-center gap-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-100 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-95 shadow-sm"
                           >
                             <Plus className="h-3.5 w-3.5 text-zinc-400" />
                             <span>Collect Payment</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => handleOpenHistoryModal(docObj)}
-                            className="flex items-center gap-1 bg-zinc-900 hover:bg-zinc-850 text-zinc-350 border border-zinc-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                          >
-                            <History className="h-3.5 w-3.5 text-zinc-500" />
-                            <span>View History</span>
                           </button>
                         </div>
                       </td>

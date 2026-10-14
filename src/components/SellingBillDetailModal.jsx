@@ -1,7 +1,7 @@
-import { X, Building2, Calendar, FileText, Edit3, Package } from 'lucide-react';
+import { X, Building2, Calendar, FileText, Edit3, Package, Printer } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/calculations';
 
-export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, onEdit, zIndex = "z-50" }) {
+export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, onEdit, onPrint, zIndex = "z-50" }) {
   if (!isOpen || !sellingBill) return null;
 
   const summary = sellingBill.summary || {};
@@ -63,6 +63,15 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
           </div>
 
           <div className="flex items-center gap-2">
+            {onPrint && (
+              <button
+                onClick={() => onPrint(sellingBill)}
+                className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 border border-zinc-200/20"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Print / Preview</span>
+              </button>
+            )}
             {onEdit && (
               <button
                 onClick={() => {

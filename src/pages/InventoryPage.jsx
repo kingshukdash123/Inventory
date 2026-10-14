@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent } from 'lucide-react';
+import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent, Building2, ChevronDown, X } from 'lucide-react';
 import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
 import { formatCurrency, formatDate } from '../utils/calculations';
 
@@ -7,6 +7,7 @@ export default function InventoryPage({ searchQuery = '' }) {
   const [stockItems, setStockItems] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'instock' | 'lowstock' | 'outofstock'
+  const [selectedSupplier, setSelectedSupplier] = useState('all');
 
   // Fetch stock items from Firestore
   const loadStock = async () => {
@@ -107,20 +108,49 @@ export default function InventoryPage({ searchQuery = '' }) {
   }, [stockItems]);
 
   // Flatten active batches across all products for aggregate stats
+  // Flatten active batches across all products for aggregate stats
   const activeBatches = useMemo(() => {
     return processedProducts.flatMap(p => p.batches);
   }, [processedProducts]);
 
-  // 2. Filter products and batches based on search query and status filter
+  // Extract unique suppliers from active batches with batch counts
+  const uniqueSuppliers = useMemo(() => {
+    const map = new Map();
+    activeBatches.forEach((item) => {
+      const name = (item.supplierName || '').trim();
+      if (name) {
+        map.set(name, (map.get(name) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }, [activeBatches]);
+
+  // Batches matching the selected supplier (for status filter count badges)
+  const batchesForSupplier = useMemo(() => {
+    if (selectedSupplier === 'all') return activeBatches;
+    const s = selectedSupplier.trim().toLowerCase();
+    return activeBatches.filter(b => (b.supplierName || '').trim().toLowerCase() === s);
+  }, [activeBatches, selectedSupplier]);
+
+  // 2. Filter products and batches based on search query, status filter, and supplier
   const filteredProducts = useMemo(() => {
     const q = (searchQuery || '').trim().toLowerCase();
+    const supplierFilter = (selectedSupplier || 'all').trim().toLowerCase();
 
     return processedProducts
       .map((product) => {
         const medMatches = (product.medicineName || '').toLowerCase().includes(q);
 
         const matchingBatches = product.batches.filter((batch) => {
-          // A. Search Query Match
+          // A. Supplier Filter Match
+          if (supplierFilter !== 'all') {
+            const batchSupplier = (batch.supplierName || '').trim().toLowerCase();
+            if (batchSupplier !== supplierFilter) return false;
+          }
+
+          // B. Search Query Match
           const batchMatches =
             medMatches ||
             (batch.batchNo || '').toLowerCase().includes(q) ||
@@ -128,7 +158,7 @@ export default function InventoryPage({ searchQuery = '' }) {
 
           if (!batchMatches) return false;
 
-          // B. Status Filter Match
+          // C. Status Filter Match
           if (statusFilter === 'instock') {
             return batch.availableQuantity >= 10;
           } else if (statusFilter === 'lowstock') {
@@ -142,13 +172,19 @@ export default function InventoryPage({ searchQuery = '' }) {
 
         if (matchingBatches.length === 0) return null;
 
+        const subtotalQty = matchingBatches.reduce(
+          (acc, b) => acc + (Number(b.availableQuantity) || 0),
+          0
+        );
+
         return {
           ...product,
+          totalAvailableQty: subtotalQty,
           batches: matchingBatches
         };
       })
       .filter(Boolean);
-  }, [processedProducts, searchQuery, statusFilter]);
+  }, [processedProducts, searchQuery, statusFilter, selectedSupplier]);
 
   const filteredBatchesCount = useMemo(() => {
     return filteredProducts.reduce((sum, p) => sum + p.batches.length, 0);
@@ -167,9 +203,14 @@ export default function InventoryPage({ searchQuery = '' }) {
 
   const totalReceivedQty = stockItems.reduce((sum, item) => sum + (Number(item.receivedQuantity) || 0), 0);
 
-  const inStockBatches = activeBatches.filter(item => item.availableQuantity >= 10).length;
-  const lowStockAlerts = activeBatches.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
-  const outOfStockAlerts = activeBatches.filter(item => item.availableQuantity === 0).length;
+  // Status counts relative to the active supplier selection
+  const statusInStockBatches = batchesForSupplier.filter(item => item.availableQuantity >= 10).length;
+  const statusLowStockAlerts = batchesForSupplier.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
+  const statusOutOfStockAlerts = batchesForSupplier.filter(item => item.availableQuantity === 0).length;
+
+  // Global inventory alert counts for the top summary cards
+  const globalLowStockAlerts = activeBatches.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
+  const globalOutOfStockAlerts = activeBatches.filter(item => item.availableQuantity === 0).length;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
@@ -277,9 +318,9 @@ export default function InventoryPage({ searchQuery = '' }) {
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-400">Inventory Status Alerts</span>
             <div className={`p-2 rounded-lg ${
-              outOfStockAlerts > 0 
+              globalOutOfStockAlerts > 0 
                 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
-                : lowStockAlerts > 0 
+                : globalLowStockAlerts > 0 
                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                   : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
             }`}>
@@ -291,25 +332,25 @@ export default function InventoryPage({ searchQuery = '' }) {
               <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse mt-1"></div>
             ) : (
               <h3 className={`text-2xl font-bold ${
-                outOfStockAlerts > 0 
+                globalOutOfStockAlerts > 0 
                   ? 'text-rose-400' 
-                  : lowStockAlerts > 0 
+                  : globalLowStockAlerts > 0 
                     ? 'text-amber-400'
                     : 'text-emerald-400'
               }`}>
-                {outOfStockAlerts + lowStockAlerts} Alerts
+                {globalOutOfStockAlerts + globalLowStockAlerts} Alerts
               </h3>
             )}
             <p className="text-[11px] text-zinc-500 mt-0.5">
-              {outOfStockAlerts} out of stock | {lowStockAlerts} low stock
+              {globalOutOfStockAlerts} out of stock | {globalLowStockAlerts} low stock
             </p>
           </div>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Status Tabs */}
           <div className="flex items-center bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
             <button
@@ -320,7 +361,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              All Items ({activeBatches.length})
+              All Items ({batchesForSupplier.length})
             </button>
             <button
               onClick={() => setStatusFilter('instock')}
@@ -330,7 +371,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              In Stock ({inStockBatches})
+              In Stock ({statusInStockBatches})
             </button>
             <button
               onClick={() => setStatusFilter('lowstock')}
@@ -340,7 +381,7 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Low Stock ({lowStockAlerts})
+              Low Stock ({statusLowStockAlerts})
             </button>
             <button
               onClick={() => setStatusFilter('outofstock')}
@@ -350,13 +391,68 @@ export default function InventoryPage({ searchQuery = '' }) {
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              Out of Stock ({outOfStockAlerts})
+              Out of Stock ({statusOutOfStockAlerts})
             </button>
+          </div>
+
+          {/* Supplier Filter Dropdown */}
+          <div className="relative flex items-center">
+            <div className={`flex items-center border rounded-xl pl-3 pr-2.5 py-1.5 transition-all ${
+              selectedSupplier !== 'all'
+                ? 'bg-zinc-850 border-zinc-600 shadow-xs'
+                : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+            }`}>
+              <Building2 className={`h-3.5 w-3.5 mr-2 shrink-0 ${
+                selectedSupplier !== 'all' ? 'text-zinc-200' : 'text-zinc-400'
+              }`} />
+              <span className="text-[11px] font-semibold text-zinc-400 mr-2 select-none whitespace-nowrap hidden sm:inline">
+                Supplier:
+              </span>
+              <div className="relative flex items-center">
+                <select
+                  value={selectedSupplier}
+                  onChange={(e) => setSelectedSupplier(e.target.value)}
+                  className="bg-transparent text-xs font-medium text-zinc-100 focus:outline-none cursor-pointer pr-6 appearance-none max-w-[200px] truncate"
+                >
+                  <option value="all" className="bg-zinc-900 text-zinc-200 py-1">
+                    All Suppliers ({uniqueSuppliers.length})
+                  </option>
+                  {uniqueSuppliers.map((supplier) => (
+                    <option key={supplier.name} value={supplier.name} className="bg-zinc-900 text-zinc-200 py-1">
+                      {supplier.name} ({supplier.count})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="h-3.5 w-3.5 text-zinc-400 pointer-events-none absolute right-0" />
+              </div>
+            </div>
+
+            {selectedSupplier !== 'all' && (
+              <button
+                onClick={() => setSelectedSupplier('all')}
+                title="Clear supplier filter"
+                className="ml-1.5 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer border border-zinc-800"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-500">
           Showing <strong className="text-zinc-300">{filteredBatchesCount}</strong> active batches ({filteredProducts.length} medicines)
+          {selectedSupplier !== 'all' && (
+            <span className="inline-flex items-center gap-1 bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 px-2 py-0.5 rounded-md text-[11px] ml-1">
+              Supplier: <span className="text-zinc-100 font-semibold truncate max-w-[130px]">{selectedSupplier}</span>
+              <button
+                onClick={() => setSelectedSupplier('all')}
+                className="hover:text-rose-400 ml-0.5 cursor-pointer"
+                title="Clear supplier"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
@@ -409,13 +505,37 @@ export default function InventoryPage({ searchQuery = '' }) {
               <Package className="h-6 w-6" />
             </div>
             <h4 className="text-sm font-semibold text-zinc-300">
-              {searchQuery ? 'No Matching Stock Items' : 'Stock Inventory is Empty'}
+              {searchQuery || selectedSupplier !== 'all' || statusFilter !== 'all' ? 'No Matching Stock Items' : 'Stock Inventory is Empty'}
             </h4>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-              {searchQuery 
+              {selectedSupplier !== 'all' && searchQuery
+                ? `No stock items matched "${searchQuery}" for supplier "${selectedSupplier}".`
+                : selectedSupplier !== 'all'
+                ? `No stock items found for supplier "${selectedSupplier}".`
+                : searchQuery
                 ? `No stock items matched your search query: "${searchQuery}".`
                 : 'Publish a supplier collection bill and click "Add to Stock" to populate your inventory.'}
             </p>
+            {(selectedSupplier !== 'all' || statusFilter !== 'all' || searchQuery) && (
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                {selectedSupplier !== 'all' && (
+                  <button
+                    onClick={() => setSelectedSupplier('all')}
+                    className="text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Clear Supplier Filter
+                  </button>
+                )}
+                {statusFilter !== 'all' && (
+                  <button
+                    onClick={() => setStatusFilter('all')}
+                    className="text-xs font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Reset Status Filter
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-360px)] min-h-[250px] relative">

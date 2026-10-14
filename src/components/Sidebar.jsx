@@ -4,25 +4,21 @@ import {
   LayoutDashboard,
   Receipt, 
   Package, 
-  Users, 
-  BarChart3, 
   Settings, 
   X,
-  Wallet,
   TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/collection_bill', label: 'Medicine Collection', icon: Receipt, },
-    { path: '/selling_bill', label: 'Medicine Selling', icon: TrendingUp, },
-    { path: '/payments', label: 'Payment Collection', icon: Wallet },
+    { path: '/collection_bill', label: 'Medicine Collection', icon: Receipt },
+    { path: '/selling_bill', label: 'Medicine Selling', icon: TrendingUp },
+    { path: '/doctors', label: 'Doctor Details', icon: UserCheck },
     { path: '/stock', label: 'Medicine Stock', icon: Package },
-    { path: '/suppliers', label: 'Suppliers', icon: Users },
-    { path: '/analytics', label: 'Taxes & Reports', icon: BarChart3 },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 

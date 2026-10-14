@@ -57,17 +57,18 @@ export default function App() {
               {/* Medicine Selling Page */}
               <Route path="/selling_bill" element={<SellingPage searchQuery={searchQuery} />} />
 
-              {/* Doctor Payment Collection Page */}
-              <Route path="/payments" element={<PaymentCollectionPage searchQuery={searchQuery} />} />
+              {/* Doctor Details & Balances Page */}
+              <Route path="/doctors" element={<PaymentCollectionPage searchQuery={searchQuery} />} />
+              <Route path="/payments" element={<Navigate to="/doctors" replace />} />
 
               {/* Medicine Stock Page */}
               <Route path="/stock" element={<InventoryPage searchQuery={searchQuery} />} />
 
-              {/* Pharma Suppliers Page */}
-              <Route path="/suppliers" element={<SuppliersPage />} />
+              {/* Pharma Suppliers Page (Redirected to Stock) */}
+              <Route path="/suppliers" element={<Navigate to="/stock" replace />} />
 
-              {/* Tax & Analytics Page */}
-              <Route path="/analytics" element={<AnalyticsPage />} />
+              {/* Tax & Analytics Page (Redirected to Dashboard) */}
+              <Route path="/analytics" element={<Navigate to="/" replace />} />
 
               {/* System Preferences Page */}
               <Route path="/settings" element={<SettingsPage />} />

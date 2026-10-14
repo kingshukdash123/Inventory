@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import SellingBillsList from '../components/SellingBillsList';
 import AddSellingBillModal from '../components/AddSellingBillModal';
 import SellingBillDetailModal from '../components/SellingBillDetailModal';
+import BillPreviewModal from '../components/BillPreviewModal';
 import { useDialog } from '../context/DialogContext';
 
 import { 
@@ -21,6 +22,7 @@ export default function SellingPage({ searchQuery }) {
   const [doctors, setDoctors] = useState([]);
   const [selectedSellingBill, setSelectedSellingBill] = useState(null);
   const [sellingBillToEdit, setSellingBillToEdit] = useState(null);
+  const [billToPreview, setBillToPreview] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -92,19 +94,20 @@ export default function SellingPage({ searchQuery }) {
 
     try {
       setIsActionLoading(true);
+      let result = null;
       if (existingSellingBillId) {
         // Update existing bill (draft or published)
-        const updated = await updateSellingBillInFirestore(existingSellingBillId, {
+        result = await updateSellingBillInFirestore(existingSellingBillId, {
           ...sellingBillData,
           isDraft
         });
 
         if (selectedSellingBill && selectedSellingBill.id === existingSellingBillId) {
-          setSelectedSellingBill(updated);
+          setSelectedSellingBill(result);
         }
       } else {
         // Create brand new bill (draft or published)
-        await addSellingBillToFirestore({
+        result = await addSellingBillToFirestore({
           ...sellingBillData,
           isDraft
         });
@@ -113,6 +116,8 @@ export default function SellingPage({ searchQuery }) {
       // Refresh doctor balances in dashboard card
       const docs = await fetchDoctorsFromFirestore();
       setDoctors(docs);
+
+      return result;
 
     } catch (error) {
       console.error('Database save/update bill failed:', error);
@@ -220,6 +225,7 @@ export default function SellingPage({ searchQuery }) {
         onDeleteSellingBill={handleDeleteSellingBill}
         onOpenAddSellingBill={handleOpenAddSellingBill}
         onPublishDraftSellingBill={handlePublishDraftSellingBill}
+        onPrintSellingBill={(sellingBill) => setBillToPreview(sellingBill)}
         isFetching={isFetching}
       />
 
@@ -231,6 +237,7 @@ export default function SellingPage({ searchQuery }) {
           setSellingBillToEdit(null);
         }}
         onSaveSellingBill={handleSaveSellingBill}
+        onPrint={(sellingBill) => setBillToPreview(sellingBill)}
         sellingBillToEdit={sellingBillToEdit}
         sellingBills={officialSellingBills}
       />
@@ -241,6 +248,14 @@ export default function SellingPage({ searchQuery }) {
         isOpen={!!selectedSellingBill}
         onClose={() => setSelectedSellingBill(null)}
         onEdit={(sellingBill) => handleOpenEditSellingBill(sellingBill, sellingBill.isDraft)}
+        onPrint={(sellingBill) => setBillToPreview(sellingBill)}
+      />
+
+      {/* Half-A4 Selling Bill Print Preview Modal */}
+      <BillPreviewModal
+        isOpen={!!billToPreview}
+        onClose={() => setBillToPreview(null)}
+        sellingBill={billToPreview}
       />
     </>
   );

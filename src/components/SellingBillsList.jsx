@@ -13,7 +13,8 @@ import {
   HardDrive,
   UploadCloud,
   Database,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/calculations';
 
@@ -27,6 +28,7 @@ export default function SellingBillsList({
   onDeleteSellingBill, 
   onOpenAddSellingBill,
   onPublishDraftSellingBill,
+  onPrintSellingBill,
   isFetching = false
 }) {
   const [sellingBillMode, setSellingBillMode] = useState('official'); // 'official' (Published) | 'draft'
@@ -346,16 +348,11 @@ export default function SellingBillsList({
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-zinc-200">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-3.5 w-3.5 text-zinc-550 shrink-0" />
-                            <span className="truncate max-w-[180px] font-bold">Dr. {sellingBill.doctorName}</span>
-                          </div>
-                          {(sellingBill.doctorTaxId || sellingBill.doctorAddress) && (
-                            <span className="text-[10px] text-zinc-500 truncate max-w-[200px] pl-5.5">
-                              {[sellingBill.doctorTaxId ? `Tax: ${sellingBill.doctorTaxId}` : '', sellingBill.doctorAddress].filter(Boolean).join(' • ')}
-                            </span>
-                          )}
+                        <div className="flex items-center gap-2">
+                          <Users className="h-3.5 w-3.5 text-zinc-550 shrink-0" />
+                          <span className="truncate max-w-[220px] font-bold text-zinc-100">
+                            Dr. {sellingBill.doctorName}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-zinc-400 whitespace-nowrap">
@@ -389,6 +386,13 @@ export default function SellingBillsList({
                             title="View Selling Bill Details"
                           >
                             <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => onPrintSellingBill && onPrintSellingBill(sellingBill)}
+                            className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-450 hover:text-zinc-100 transition-colors"
+                            title="Print / Preview Invoice (Half-A4)"
+                          >
+                            <Printer className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => onEditSellingBill(sellingBill, sellingBillMode === 'draft')}
