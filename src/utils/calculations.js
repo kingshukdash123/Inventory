@@ -200,3 +200,79 @@ export function calculateSellingBillSummary(items = [], prevDue = 0, fixedDiscou
   return summary;
 }
 
+/**
+ * Parse an expiry date string (e.g. "MM/YY", "MM/YYYY", "YYYY-MM-DD")
+ * into a comparable numeric sort key: (year * 100 + month).
+ * Returns 0 for invalid or missing dates.
+ */
+export function parseExpiryToNumber(expiryStr) {
+  if (!expiryStr || typeof expiryStr !== 'string') return 0;
+  const str = expiryStr.trim();
+  if (!str || str.toUpperCase() === 'N/A') return 0;
+
+  // Match MM/YY or MM/YYYY (with / or -)
+  const mmyyMatch = str.match(/^(\d{1,2})[/-](\d{2}|\d{4})$/);
+  if (mmyyMatch) {
+    const month = parseInt(mmyyMatch[1], 10);
+    let year = parseInt(mmyyMatch[2], 10);
+    if (year < 100) {
+      // 2-digit year (e.g. 26 -> 2026, 99 -> 1999)
+      year += year < 70 ? 2000 : 1900;
+    }
+    return year * 100 + month;
+  }
+
+  // Match YYYY-MM or YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})[/-](\d{1,2})/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10);
+    return year * 100 + month;
+  }
+
+  // Fallback to Date object if parseable
+  const date = new Date(str);
+  if (!isNaN(date.getTime())) {
+    return date.getFullYear() * 100 + (date.getMonth() + 1);
+  }
+
+  return 0;
+}
+
+/**
+ * Compare two items with expiryDate descending (latest expiry date first).
+ * Items without a valid expiry date (0) are sorted to the bottom.
+ * Tie-breaker: batchNo ascending.
+ */
+export function compareExpiryDesc(a, b) {
+  const valA = parseExpiryToNumber(a?.expiryDate);
+  const valB = parseExpiryToNumber(b?.expiryDate);
+
+  if (valA === 0 && valB !== 0) return 1;
+  if (valB === 0 && valA !== 0) return -1;
+
+  if (valB !== valA) {
+    return valB - valA; // Descending: higher/later date first
+  }
+  return (a?.batchNo || '').localeCompare(b?.batchNo || '');
+}
+
+/**
+ * Compare two items with expiryDate ascending (nearest/earliest expiry date first).
+ * Items without a valid expiry date (0) are sorted to the bottom.
+ * Tie-breaker: batchNo ascending.
+ */
+export function compareExpiryAsc(a, b) {
+  const valA = parseExpiryToNumber(a?.expiryDate);
+  const valB = parseExpiryToNumber(b?.expiryDate);
+
+  // Missing or invalid dates go to the bottom
+  if (valA === 0 && valB !== 0) return 1;
+  if (valB === 0 && valA !== 0) return -1;
+
+  if (valA !== valB) {
+    return valA - valB; // Ascending: smaller/nearest date first
+  }
+  return (a?.batchNo || '').localeCompare(b?.batchNo || '');
+}
+

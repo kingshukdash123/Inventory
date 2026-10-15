@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent, Building2, ChevronDown, X } from 'lucide-react';
 import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
-import { formatCurrency, formatDate } from '../utils/calculations';
+import { formatCurrency, formatDate, compareExpiryAsc } from '../utils/calculations';
 
 export default function InventoryPage({ searchQuery = '' }) {
   const [stockItems, setStockItems] = useState([]);
@@ -80,6 +80,8 @@ export default function InventoryPage({ searchQuery = '' }) {
       } else {
         // If all batches have 0 qty, keep ONLY the single latest batch
         const sortedZero = [...zeroBatches].sort((a, b) => {
+          const expDiff = compareExpiryAsc(a, b);
+          if (expDiff !== 0) return expDiff;
           const timeA = parseTimestamp(a.updatedAt) || parseTimestamp(a.createdAt);
           const timeB = parseTimestamp(b.updatedAt) || parseTimestamp(b.createdAt);
           return timeB - timeA;
@@ -87,8 +89,8 @@ export default function InventoryPage({ searchQuery = '' }) {
         resolvedBatches = sortedZero.length > 0 ? [sortedZero[0]] : [];
       }
 
-      // Sort batches within product alphabetically by batch number
-      resolvedBatches.sort((a, b) => (a.batchNo || '').localeCompare(b.batchNo || ''));
+      // Sort batches within product by expiry date ascending (nearest expiry first)
+      resolvedBatches.sort(compareExpiryAsc);
 
       const totalQty = resolvedBatches.reduce(
         (acc, b) => acc + (Number(b.availableQuantity) || 0),

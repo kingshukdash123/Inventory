@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Calculator, Check, AlertCircle, HardDrive, Loader2, Building2, Users, Receipt } from 'lucide-react';
-import { calculateSellingLineItem, calculateSellingBillSummary, formatCurrency } from '../utils/calculations';
+import { calculateSellingLineItem, calculateSellingBillSummary, formatCurrency, compareExpiryAsc } from '../utils/calculations';
 import { fetchStockItemsFromFirestore } from '../services/stockService';
 import { fetchDoctorsFromFirestore } from '../services/doctorService';
 import { fetchSellerDetailsFromFirestore } from '../services/settingsService';
@@ -411,9 +411,29 @@ export default function AddSellingBillModal({
       // Filter items from stock that match query in name, showing batch options
       const matched = allStock.filter(
         (stockItem) => 
-          stockItem.medicineName.toUpperCase().includes(normalizedQuery) && 
-          stockItem.availableQuantity > 0
+          (stockItem.medicineName || '').toUpperCase().includes(normalizedQuery) && 
+          (Number(stockItem.availableQuantity) || 0) > 0
       );
+
+      // Sort matching stock items:
+      // 1. Prioritize medicines starting with the search query (relevance)
+      // 2. Group by medicine name alphabetically
+      // 3. For the same medicine, sort batches by NEAREST EXPIRY FIRST (compareExpiryAsc)
+      matched.sort((a, b) => {
+        const nameA = (a.medicineName || '').toUpperCase();
+        const nameB = (b.medicineName || '').toUpperCase();
+
+        if (nameA !== nameB) {
+          const aStarts = nameA.startsWith(normalizedQuery);
+          const bStarts = nameB.startsWith(normalizedQuery);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return nameA.localeCompare(nameB);
+        }
+
+        // Same medicine: sort by nearest expiry date first
+        return compareExpiryAsc(a, b);
+      });
 
       setSuggestions(matched);
       setSelectedSuggestionIndex(-1);
@@ -507,6 +527,11 @@ export default function AddSellingBillModal({
         e.preventDefault();
         e.stopPropagation();
         handleSelectSuggestion(index, suggestions[selectedSuggestionIndex]);
+      } else if (suggestions.length > 0) {
+        // If Enter is pressed while suggestions are open, select the first suggestion (nearest expiry product)
+        e.preventDefault();
+        e.stopPropagation();
+        handleSelectSuggestion(index, suggestions[0]);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
