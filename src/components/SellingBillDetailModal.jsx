@@ -21,7 +21,7 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
               <h3 className="text-lg font-bold text-zinc-100 font-mono">{sellingBill.billNo}</h3>
               <p className="text-xs text-zinc-400 flex flex-wrap items-center gap-2 mt-0.5">
                 <Building2 className="h-3.5 w-3.5 text-zinc-500" />
-                <span className="font-semibold text-zinc-300">Dr. {sellingBill.doctorName}</span>
+                <span className="font-semibold text-zinc-300">{sellingBill.doctorName}</span>
                 {sellingBill.doctorPhone && (
                   <>
                     <span>•</span>

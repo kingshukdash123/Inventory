@@ -351,7 +351,7 @@ export default function SellingBillsList({
                         <div className="flex items-center gap-2">
                           <Users className="h-3.5 w-3.5 text-zinc-550 shrink-0" />
                           <span className="truncate max-w-[220px] font-bold text-zinc-100">
-                            Dr. {sellingBill.doctorName}
+                            {sellingBill.doctorName}
                           </span>
                         </div>
                       </td>

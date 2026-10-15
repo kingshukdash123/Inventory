@@ -88,7 +88,7 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
       
       triggerAlert(
         'Payment Recorded',
-        `Successfully collected payment of ${formatCurrency(paymentData.amount)} from Dr. ${paymentData.doctorName}!`,
+        `Successfully collected payment of ${formatCurrency(paymentData.amount)} from ${paymentData.doctorName}!`,
         'success'
       );
       
@@ -338,7 +338,7 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                     >
                       <td className="py-4 px-6 text-zinc-150">
                         <div className="font-bold uppercase tracking-wide group-hover:text-blue-400 group-hover:underline transition-colors flex items-center gap-1.5">
-                          <span>Dr. {docObj.name}</span>
+                          <span>{docObj.name}</span>
                         </div>
                         {docObj.phone && (
                           <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
@@ -435,7 +435,7 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                         </div>
                       </td>
                       <td className="py-4 px-6 font-bold text-zinc-150 uppercase">
-                        Dr. {payObj.doctorName}
+                        {payObj.doctorName}
                       </td>
                       <td className="py-4 px-6">
                         <span className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded text-[11px] font-semibold border border-zinc-700/60">

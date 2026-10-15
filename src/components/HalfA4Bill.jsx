@@ -81,7 +81,7 @@ export default function HalfA4Bill({
 
             <div className="text-[11.5px] text-zinc-800 pt-0.5">
               <span className="text-zinc-600">Billed To: </span>
-              <span className="font-bold text-[13px] text-black">Dr. {sellingBill.doctorName || 'Customer'}</span>
+              <span className="font-bold text-[13px] text-black">{sellingBill.doctorName || 'Customer'}</span>
               {sellingBill.doctorPhone && (
                 <span className="text-zinc-600 ml-1.5 font-mono">({sellingBill.doctorPhone})</span>
               )}

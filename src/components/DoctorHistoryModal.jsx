@@ -67,7 +67,7 @@ export default function DoctorHistoryModal({
           <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">
             <div>
               <h3 className="text-base font-bold text-zinc-100 uppercase tracking-wide">
-                Dr. {doctorObj.name}'s Account History
+                {doctorObj.name}'s Account History
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
                 <span>Comprehensive list of all sales invoices and payment collections</span>

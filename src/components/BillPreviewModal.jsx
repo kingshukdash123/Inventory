@@ -272,7 +272,7 @@ export default function BillPreviewModal({
               </span>
             </div>
             <p className="text-[11px] text-zinc-400">
-              Dr. {sellingBill.doctorName} • Bill #{sellingBill.billNo} • {sheets.length} Physical Page{sheets.length > 1 ? 's' : ''}
+              {sellingBill.doctorName} • Bill #{sellingBill.billNo} • {sheets.length} Physical Page{sheets.length > 1 ? 's' : ''}
             </p>
           </div>
         </div>
