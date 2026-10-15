@@ -84,6 +84,19 @@ export default function AddSellingBillModal({
   const [doctorsList, setDoctorsList] = useState([]);
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [showDoctorDropdown, setShowDoctorDropdown] = useState(false);
+  const [selectedDoctorIndex, setSelectedDoctorIndex] = useState(-1);
+  const doctorItemRefs = useRef([]);
+  const suggestionItemRefs = useRef([]);
+
+  // Auto-scroll selected doctor suggestion into view when navigating with arrow keys
+  useEffect(() => {
+    if (selectedDoctorIndex >= 0 && doctorItemRefs.current[selectedDoctorIndex]) {
+      doctorItemRefs.current[selectedDoctorIndex].scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      });
+    }
+  }, [selectedDoctorIndex]);
 
   // Past selling bills for doctor historical discount lookup
   const [fetchedSellingBills, setFetchedSellingBills] = useState([]);
@@ -111,6 +124,16 @@ export default function AddSellingBillModal({
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const debounceTimeoutRef = useRef(null);
   const lastFetchedStockRef = useRef([]);
+
+  // Auto-scroll selected product suggestion into view when navigating with arrow keys
+  useEffect(() => {
+    if (selectedSuggestionIndex >= 0 && suggestionItemRefs.current[selectedSuggestionIndex]) {
+      suggestionItemRefs.current[selectedSuggestionIndex].scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      });
+    }
+  }, [selectedSuggestionIndex]);
 
   // Clean up debounce timeout on unmount
   useEffect(() => {
@@ -217,6 +240,9 @@ export default function AddSellingBillModal({
       setFixedDiscount('');
       setInitialDue('');
       setPrevDue(0);
+      setFilteredDoctors([]);
+      setShowDoctorDropdown(false);
+      setSelectedDoctorIndex(-1);
       setItems([
         {
           itemName: '',
@@ -319,9 +345,11 @@ export default function AddSellingBillModal({
       const filtered = doctorsList.filter(d => d.name.toUpperCase().includes(uppercaseVal));
       setFilteredDoctors(filtered);
       setShowDoctorDropdown(true);
+      setSelectedDoctorIndex(-1);
     } else {
       setFilteredDoctors([]);
       setShowDoctorDropdown(false);
+      setSelectedDoctorIndex(-1);
     }
   };
 
@@ -339,6 +367,7 @@ export default function AddSellingBillModal({
       setDoctorTaxId(docObj.taxId);
     }
     setShowDoctorDropdown(false);
+    setSelectedDoctorIndex(-1);
 
     setItems((prevItems) =>
       prevItems.map((item) => {
@@ -350,6 +379,59 @@ export default function AddSellingBillModal({
         };
       })
     );
+  };
+
+  // Handle custom key navigation for doctor name dropdown suggestions
+  const handleDoctorKeyDown = (e) => {
+    if (!showDoctorDropdown || filteredDoctors.length === 0) {
+      if (e.key === 'ArrowDown' && doctorsList.length > 0) {
+        const val = doctorName.trim().toUpperCase();
+        const filtered = val
+          ? doctorsList.filter(d => d.name.toUpperCase().includes(val))
+          : doctorsList;
+        if (filtered.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          setFilteredDoctors(filtered);
+          setShowDoctorDropdown(true);
+          setSelectedDoctorIndex(0);
+        }
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedDoctorIndex((prev) =>
+        prev < filteredDoctors.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedDoctorIndex((prev) =>
+        prev > 0 ? prev - 1 : -1
+      );
+    } else if (e.key === 'Enter') {
+      if (selectedDoctorIndex >= 0 && selectedDoctorIndex < filteredDoctors.length) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectDoctorSuggestion(filteredDoctors[selectedDoctorIndex]);
+      } else if (filteredDoctors.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectDoctorSuggestion(filteredDoctors[0]);
+      }
+    } else if (e.key === 'Tab') {
+      if (selectedDoctorIndex >= 0 && selectedDoctorIndex < filteredDoctors.length) {
+        selectDoctorSuggestion(filteredDoctors[selectedDoctorIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDoctorDropdown(false);
+      setSelectedDoctorIndex(-1);
+    }
   };
 
   // Handle line item field changes
@@ -532,6 +614,10 @@ export default function AddSellingBillModal({
         e.preventDefault();
         e.stopPropagation();
         handleSelectSuggestion(index, suggestions[0]);
+      }
+    } else if (e.key === 'Tab') {
+      if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length) {
+        handleSelectSuggestion(index, suggestions[selectedSuggestionIndex]);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -841,18 +927,38 @@ export default function AddSellingBillModal({
                     type="text"
                     value={doctorName}
                     onChange={(e) => handleDoctorInputChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setShowDoctorDropdown(false), 200)}
+                    onKeyDown={handleDoctorKeyDown}
+                    onFocus={() => {
+                      if (doctorName.trim().length > 0) {
+                        const filtered = doctorsList.filter(d => d.name.toUpperCase().includes(doctorName.trim().toUpperCase()));
+                        if (filtered.length > 0) {
+                          setFilteredDoctors(filtered);
+                          setShowDoctorDropdown(true);
+                          setSelectedDoctorIndex(-1);
+                        }
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => {
+                      setShowDoctorDropdown(false);
+                      setSelectedDoctorIndex(-1);
+                    }, 200)}
                     required
                     placeholder="ENTER DOCTOR NAME"
                     className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none uppercase"
                   />
                   {showDoctorDropdown && filteredDoctors.length > 0 && (
-                    <div className="absolute left-0 right-0 mt-1 max-h-36 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 divide-y divide-zinc-900">
-                      {filteredDoctors.map((docObj) => (
+                    <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-lg shadow-xl z-50 divide-y divide-zinc-900 select-none">
+                      {filteredDoctors.map((docObj, idx) => (
                         <div
                           key={docObj.id}
+                          ref={(el) => (doctorItemRefs.current[idx] = el)}
                           onMouseDown={() => selectDoctorSuggestion(docObj)}
-                          className="px-3 py-2 text-xs font-semibold uppercase text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200 cursor-pointer transition-colors"
+                          onMouseEnter={() => setSelectedDoctorIndex(idx)}
+                          className={`px-3 py-2 text-xs font-semibold uppercase transition-colors cursor-pointer ${
+                            selectedDoctorIndex === idx
+                              ? 'bg-zinc-800 text-zinc-100 font-bold ring-1 ring-zinc-700'
+                              : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200'
+                          }`}
                         >
                           <div className="flex items-center justify-between">
                             <span>{docObj.name}</span>
@@ -1030,9 +1136,11 @@ export default function AddSellingBillModal({
                               {suggestions.map((stockItem, idx) => (
                                 <div
                                   key={stockItem.id}
+                                  ref={(el) => (suggestionItemRefs.current[idx] = el)}
                                   onMouseDown={() => handleSelectSuggestion(index, stockItem)}
+                                  onMouseEnter={() => setSelectedSuggestionIndex(idx)}
                                   className={`px-3 py-2 text-xs font-semibold uppercase transition-colors cursor-pointer ${selectedSuggestionIndex === idx
-                                      ? 'bg-zinc-900 text-zinc-100 font-bold'
+                                      ? 'bg-zinc-800 text-zinc-100 font-bold ring-1 ring-zinc-700'
                                       : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-200'
                                     }`}
                                 >
