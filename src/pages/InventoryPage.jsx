@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent, Building2, ChevronDown, X } from 'lucide-react';
+import { Package, DollarSign, Layers, ShieldAlert, RefreshCw, Calendar, Percent, Building2, ChevronDown, X, AlertTriangle } from 'lucide-react';
 import { fetchStockItemsFromFirestore, subscribeStockItems } from '../services/stockService';
-import { formatCurrency, formatDate, compareExpiryAsc } from '../utils/calculations';
+import { formatCurrency, formatDate, compareExpiryAsc, isNearExpiry } from '../utils/calculations';
 
 export default function InventoryPage({ searchQuery = '' }) {
   const [stockItems, setStockItems] = useState([]);
   const [isFetching, setIsFetching] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'instock' | 'lowstock' | 'outofstock'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'instock' | 'lowstock' | 'outofstock' | 'nearexpiry'
   const [selectedSupplier, setSelectedSupplier] = useState('all');
 
   // Fetch stock items from Firestore
@@ -167,6 +167,8 @@ export default function InventoryPage({ searchQuery = '' }) {
             return batch.availableQuantity > 0 && batch.availableQuantity < 10;
           } else if (statusFilter === 'outofstock') {
             return batch.availableQuantity === 0;
+          } else if (statusFilter === 'nearexpiry') {
+            return (Number(batch.availableQuantity) || 0) > 0 && isNearExpiry(batch.expiryDate);
           }
 
           return true;
@@ -209,10 +211,13 @@ export default function InventoryPage({ searchQuery = '' }) {
   const statusInStockBatches = batchesForSupplier.filter(item => item.availableQuantity >= 10).length;
   const statusLowStockAlerts = batchesForSupplier.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
   const statusOutOfStockAlerts = batchesForSupplier.filter(item => item.availableQuantity === 0).length;
+  const statusNearExpiryAlerts = batchesForSupplier.filter(item => (Number(item.availableQuantity) || 0) > 0 && isNearExpiry(item.expiryDate)).length;
 
   // Global inventory alert counts for the top summary cards
   const globalLowStockAlerts = activeBatches.filter(item => item.availableQuantity > 0 && item.availableQuantity < 10).length;
   const globalOutOfStockAlerts = activeBatches.filter(item => item.availableQuantity === 0).length;
+  const globalNearExpiryAlerts = activeBatches.filter(item => (Number(item.availableQuantity) || 0) > 0 && isNearExpiry(item.expiryDate)).length;
+  const totalGlobalAlerts = globalOutOfStockAlerts + globalLowStockAlerts + globalNearExpiryAlerts;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
@@ -315,12 +320,12 @@ export default function InventoryPage({ searchQuery = '' }) {
           </div>
         </div>
 
-        {/* Alerts: Low / Out of Stock */}
+        {/* Alerts: Low / Out of Stock / Near Expiry */}
         <div className="bg-zinc-900/90 border border-zinc-800 p-4 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-zinc-400">Inventory Status Alerts</span>
             <div className={`p-2 rounded-lg ${
-              globalOutOfStockAlerts > 0 
+              globalOutOfStockAlerts > 0 || globalNearExpiryAlerts > 0
                 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
                 : globalLowStockAlerts > 0 
                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
@@ -334,18 +339,49 @@ export default function InventoryPage({ searchQuery = '' }) {
               <div className="h-7 w-16 bg-zinc-800 rounded animate-pulse mt-1"></div>
             ) : (
               <h3 className={`text-2xl font-bold ${
-                globalOutOfStockAlerts > 0 
+                globalOutOfStockAlerts > 0 || globalNearExpiryAlerts > 0
                   ? 'text-rose-400' 
                   : globalLowStockAlerts > 0 
                     ? 'text-amber-400'
                     : 'text-emerald-400'
               }`}>
-                {globalOutOfStockAlerts + globalLowStockAlerts} Alerts
+                {totalGlobalAlerts} Alerts
               </h3>
             )}
-            <p className="text-[11px] text-zinc-500 mt-0.5">
-              {globalOutOfStockAlerts} out of stock | {globalLowStockAlerts} low stock
-            </p>
+            <div className="text-[11px] text-zinc-400 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('outofstock')}
+                className={`hover:text-rose-400 cursor-pointer transition-colors ${
+                  globalOutOfStockAlerts > 0 ? 'text-zinc-300' : 'text-zinc-500'
+                }`}
+                title="Filter by Out of Stock"
+              >
+                {globalOutOfStockAlerts} out of stock
+              </button>
+              <span className="text-zinc-600">|</span>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('lowstock')}
+                className={`hover:text-amber-400 cursor-pointer transition-colors ${
+                  globalLowStockAlerts > 0 ? 'text-zinc-300' : 'text-zinc-500'
+                }`}
+                title="Filter by Low Stock"
+              >
+                {globalLowStockAlerts} low stock
+              </button>
+              <span className="text-zinc-600">|</span>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('nearexpiry')}
+                className={`hover:text-rose-300 cursor-pointer transition-colors font-medium ${
+                  globalNearExpiryAlerts > 0 ? 'text-rose-400' : 'text-zinc-500'
+                }`}
+                title="Filter by Near Expiry"
+              >
+                {globalNearExpiryAlerts} near expiry
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -354,7 +390,7 @@ export default function InventoryPage({ searchQuery = '' }) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Status Tabs */}
-          <div className="flex items-center bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
+          <div className="flex flex-wrap items-center bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
             <button
               onClick={() => setStatusFilter('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -394,6 +430,17 @@ export default function InventoryPage({ searchQuery = '' }) {
               }`}
             >
               Out of Stock ({statusOutOfStockAlerts})
+            </button>
+            <button
+              onClick={() => setStatusFilter('nearexpiry')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                statusFilter === 'nearexpiry'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <AlertTriangle className={`h-3.5 w-3.5 ${statusFilter === 'nearexpiry' ? 'text-white' : 'text-rose-400'}`} />
+              <span>Near Expiry ({statusNearExpiryAlerts})</span>
             </button>
           </div>
 
@@ -443,18 +490,6 @@ export default function InventoryPage({ searchQuery = '' }) {
 
         <div className="flex items-center gap-2 text-xs text-zinc-500">
           Showing <strong className="text-zinc-300">{filteredBatchesCount}</strong> active batches ({filteredProducts.length} medicines)
-          {selectedSupplier !== 'all' && (
-            <span className="inline-flex items-center gap-1 bg-zinc-800/80 text-zinc-300 border border-zinc-700/60 px-2 py-0.5 rounded-md text-[11px] ml-1">
-              Supplier: <span className="text-zinc-100 font-semibold truncate max-w-[130px]">{selectedSupplier}</span>
-              <button
-                onClick={() => setSelectedSupplier('all')}
-                className="hover:text-rose-400 ml-0.5 cursor-pointer"
-                title="Clear supplier"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
         </div>
       </div>
 
@@ -510,7 +545,11 @@ export default function InventoryPage({ searchQuery = '' }) {
               {searchQuery || selectedSupplier !== 'all' || statusFilter !== 'all' ? 'No Matching Stock Items' : 'Stock Inventory is Empty'}
             </h4>
             <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-              {selectedSupplier !== 'all' && searchQuery
+              {statusFilter === 'nearexpiry'
+                ? selectedSupplier !== 'all'
+                  ? `No near expiry items found for supplier "${selectedSupplier}".`
+                  : 'No medicine batches are near expiry (within 6 months).'
+                : selectedSupplier !== 'all' && searchQuery
                 ? `No stock items matched "${searchQuery}" for supplier "${selectedSupplier}".`
                 : selectedSupplier !== 'all'
                 ? `No stock items found for supplier "${selectedSupplier}".`
@@ -568,12 +607,17 @@ export default function InventoryPage({ searchQuery = '' }) {
                     const isLast = index === batchCount - 1;
                     const isLow = item.availableQuantity > 0 && item.availableQuantity < 10;
                     const isOut = item.availableQuantity === 0;
+                    const isNearExp = (Number(item.availableQuantity) || 0) > 0 && isNearExpiry(item.expiryDate);
 
                     return (
                       <tr 
                         key={item.id}
-                        className={`hover:bg-zinc-800/40 transition-colors ${
-                          isLast ? 'border-b border-zinc-700/80' : 'border-b border-zinc-800/40'
+                        className={`transition-colors ${
+                          isNearExp
+                            ? 'bg-rose-950/25 hover:bg-rose-950/45 text-rose-100 border-b border-rose-900/40'
+                            : isLast 
+                              ? 'hover:bg-zinc-800/40 border-b border-zinc-700/80' 
+                              : 'hover:bg-zinc-800/40 border-b border-zinc-800/40'
                         }`}
                       >
                         {/* Merged Product Name Cell */}
@@ -614,9 +658,9 @@ export default function InventoryPage({ searchQuery = '' }) {
                         </td>
 
                         {/* Expiry */}
-                        <td className="py-3.5 px-4 text-center font-mono text-zinc-400 whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <Calendar className="h-3 w-3 text-zinc-500" />
+                        <td className="py-3.5 px-4 text-center font-mono whitespace-nowrap">
+                          <div className={`flex items-center justify-center gap-1 ${isNearExp ? 'text-rose-300 font-semibold' : 'text-zinc-400'}`}>
+                            <Calendar className={`h-3 w-3 ${isNearExp ? 'text-rose-400' : 'text-zinc-500'}`} />
                             <span>{item.expiryDate || 'N/A'}</span>
                           </div>
                         </td>

@@ -230,6 +230,14 @@ export function parseExpiryToNumber(expiryStr) {
     return year * 100 + month;
   }
 
+  // Match DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (dmyMatch) {
+    const month = parseInt(dmyMatch[2], 10);
+    const year = parseInt(dmyMatch[3], 10);
+    return year * 100 + month;
+  }
+
   // Fallback to Date object if parseable
   const date = new Date(str);
   if (!isNaN(date.getTime())) {
@@ -237,6 +245,107 @@ export function parseExpiryToNumber(expiryStr) {
   }
 
   return 0;
+}
+
+/**
+ * Parse an expiry date string or object into a Date object representing
+ * the end of the expiration month or day.
+ * Returns null for invalid or missing dates.
+ */
+export function parseExpiryToDate(expiryInput) {
+  if (!expiryInput) return null;
+
+  if (typeof expiryInput?.toDate === 'function') {
+    return expiryInput.toDate();
+  }
+
+  if (expiryInput instanceof Date) {
+    return isNaN(expiryInput.getTime()) ? null : expiryInput;
+  }
+
+  if (typeof expiryInput !== 'string') return null;
+  const str = expiryInput.trim();
+  if (!str || str.toUpperCase() === 'N/A' || str === '-') return null;
+
+  // Match MM/YY or MM/YYYY (with / or -)
+  const mmyyMatch = str.match(/^(\d{1,2})[/-](\d{2}|\d{4})$/);
+  if (mmyyMatch) {
+    const month = parseInt(mmyyMatch[1], 10);
+    let year = parseInt(mmyyMatch[2], 10);
+    if (year < 100) {
+      year += year < 70 ? 2000 : 1900;
+    }
+    // Medicine expires at the end of the specified month (last day at 23:59:59.999)
+    return new Date(year, month, 0, 23, 59, 59, 999);
+  }
+
+  // Match DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10);
+    const year = parseInt(dmyMatch[3], 10);
+    return new Date(year, month - 1, day, 23, 59, 59, 999);
+  }
+
+  // Match YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+  if (ymdMatch) {
+    const year = parseInt(ymdMatch[1], 10);
+    const month = parseInt(ymdMatch[2], 10);
+    const day = parseInt(ymdMatch[3], 10);
+    return new Date(year, month - 1, day, 23, 59, 59, 999);
+  }
+
+  // Match YYYY-MM
+  const ymMatch = str.match(/^(\d{4})[/-](\d{1,2})$/);
+  if (ymMatch) {
+    const year = parseInt(ymMatch[1], 10);
+    const month = parseInt(ymMatch[2], 10);
+    return new Date(year, month, 0, 23, 59, 59, 999);
+  }
+
+  // Fallback to standard Date parsing
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  return null;
+}
+
+/**
+ * Check if a medicine batch is near expiry (expires within the given number of months from now, or already expired)
+ * @param {string|Date} expiryInput 
+ * @param {number} monthsThreshold Default is 6 months
+ * @returns {boolean}
+ */
+export function isNearExpiry(expiryInput, monthsThreshold = 6) {
+  const expDate = parseExpiryToDate(expiryInput);
+  if (!expDate) return false;
+
+  const now = new Date();
+  // Threshold date: end of the N-th month from current month
+  const thresholdDate = new Date(
+    now.getFullYear(),
+    now.getMonth() + monthsThreshold + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+
+  return expDate.getTime() <= thresholdDate.getTime();
+}
+
+/**
+ * Check if a medicine batch is already expired (expiration date has passed)
+ */
+export function isExpired(expiryInput) {
+  const expDate = parseExpiryToDate(expiryInput);
+  if (!expDate) return false;
+  return expDate.getTime() < Date.now();
 }
 
 /**
@@ -275,4 +384,5 @@ export function compareExpiryAsc(a, b) {
   }
   return (a?.batchNo || '').localeCompare(b?.batchNo || '');
 }
+
 
