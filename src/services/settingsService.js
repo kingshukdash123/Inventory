@@ -29,10 +29,11 @@ export async function saveSellerDetailsToFirestore(details) {
   try {
     const docRef = doc(db, COLLECTION_NAME, DOCUMENT_ID);
     const sellerDetails = new SellerDetails({
-      name: details.name.toUpperCase().trim(),
-      address: details.address.trim(),
-      gstin: details.gstin.toUpperCase().trim(),
-      contact: details.contact.trim(),
+      name: (details.name || '').toUpperCase().trim(),
+      address: (details.address || '').trim(),
+      gstin: (details.gstin || '').toUpperCase().trim(),
+      dlNo: (details.dlNo || '').toUpperCase().trim(),
+      contact: (details.contact || '').trim(),
       updatedAt: serverTimestamp()
     });
 

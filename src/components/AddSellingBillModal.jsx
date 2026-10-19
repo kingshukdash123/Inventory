@@ -40,6 +40,7 @@ export default function AddSellingBillModal({
     name: '',
     address: '',
     gstin: '',
+    dlNo: '',
     contact: ''
   });
 
@@ -67,6 +68,7 @@ export default function AddSellingBillModal({
             name: parsed.name || '',
             address: parsed.address || '',
             gstin: parsed.gstin || '',
+            dlNo: parsed.dlNo || '',
             contact: parsed.contact || ''
           });
         } catch (e) {
@@ -899,11 +901,14 @@ export default function AddSellingBillModal({
               <div className="space-y-1.5 text-xs text-zinc-300">
                 <p className="font-bold text-sm text-zinc-100">{sellerDetails.name || 'Company Name'}</p>
                 <p className="text-zinc-400 text-xs leading-relaxed">{sellerDetails.address || 'Address not specified'}</p>
-                <p className="font-mono text-zinc-400 text-[11px]">
-                  <span className="text-zinc-500 font-semibold">GSTIN:</span> {sellerDetails.gstin || 'N/A'}
-                </p>
                 <p className="text-zinc-400 text-[11px]">
                   <span className="text-zinc-500 font-semibold">Contact:</span> {sellerDetails.contact || 'N/A'}
+                </p>
+                <p className="font-mono text-zinc-400 text-[11px]">
+                  <span className="text-zinc-500 font-semibold">Tax ID:</span> {sellerDetails.gstin || 'N/A'}
+                </p>
+                <p className="font-mono text-zinc-400 text-[11px]">
+                  <span className="text-zinc-500 font-semibold">DL No:</span> {sellerDetails.dlNo || 'N/A'}
                 </p>
               </div>
             </div>
@@ -966,7 +971,7 @@ export default function AddSellingBillModal({
                           </div>
                           {(docObj.address || docObj.taxId || docObj.phone) && (
                             <div className="text-[10px] text-zinc-500 font-normal truncate mt-0.5">
-                              {[docObj.taxId ? `Tax: ${docObj.taxId}` : '', docObj.address, docObj.phone].filter(Boolean).join(' • ')}
+                              {[docObj.taxId ? `Tax ID: ${docObj.taxId}` : '', docObj.address, docObj.phone].filter(Boolean).join(' • ')}
                             </div>
                           )}
                         </div>
@@ -1003,13 +1008,13 @@ export default function AddSellingBillModal({
 
                 <div>
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                    Tax ID / GSTIN
+                    Tax ID
                   </label>
                   <input
                     type="text"
                     value={doctorTaxId}
                     onChange={(e) => setDoctorTaxId(e.target.value.toUpperCase())}
-                    placeholder="GSTIN / REG NO."
+                    placeholder="TAX ID"
                     className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
                   />
                 </div>

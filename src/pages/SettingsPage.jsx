@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const [storeName, setStoreName] = useState('');
   const [address, setAddress] = useState('');
   const [gstin, setGstin] = useState('');
+  const [dlNo, setDlNo] = useState('');
   const [contact, setContact] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -34,6 +35,7 @@ export default function SettingsPage() {
           setStoreName(details.name || '');
           setAddress(details.address || '');
           setGstin(details.gstin || '');
+          setDlNo(details.dlNo || '');
           setContact(details.contact || '');
           // Keep localStorage in sync
           localStorage.setItem('seller_details', JSON.stringify(details.toJson()));
@@ -45,11 +47,13 @@ export default function SettingsPage() {
             setStoreName(parsed.name || '');
             setAddress(parsed.address || '');
             setGstin(parsed.gstin || '');
+            setDlNo(parsed.dlNo || '');
             setContact(parsed.contact || '');
           } else {
             setStoreName('');
             setAddress('');
             setGstin('');
+            setDlNo('');
             setContact('');
           }
         }
@@ -71,6 +75,7 @@ export default function SettingsPage() {
         name: storeName.toUpperCase().trim(),
         address: address.trim(),
         gstin: gstin.toUpperCase().trim(),
+        dlNo: dlNo.toUpperCase().trim(),
         contact: contact.trim()
       };
 
@@ -155,10 +160,24 @@ export default function SettingsPage() {
               />
             </div>
 
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                Contact Number
+              </label>
+              <input
+                type="text"
+                required
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                placeholder="E.G. +91 99999 99999"
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono"
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                  GSTIN / Tax ID
+                  Tax ID
                 </label>
                 <input
                   type="text"
@@ -172,15 +191,14 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                  Contact Number
+                  DL No. (Drug License)
                 </label>
                 <input
                   type="text"
-                  required
-                  value={contact}
-                  onChange={(e) => setContact(e.target.value)}
-                  placeholder="E.G. +91 99999 99999"
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono"
+                  value={dlNo}
+                  onChange={(e) => setDlNo(e.target.value)}
+                  placeholder="E.G. 20B/1234, 21B/1234"
+                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none font-mono uppercase"
                 />
               </div>
             </div>

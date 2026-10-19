@@ -26,6 +26,7 @@ export default function BillPreviewModal({
         name: '',
         address: '',
         gstin: '',
+        dlNo: '',
         contact: ''
       };
     } catch {
@@ -33,6 +34,7 @@ export default function BillPreviewModal({
         name: '',
         address: '',
         gstin: '',
+        dlNo: '',
         contact: ''
       };
     }

@@ -75,7 +75,7 @@ export default function DoctorHistoryModal({
                   <>
                     <span>•</span>
                     <span className="text-zinc-500 font-normal">
-                      {[doctorObj.phone, doctorObj.taxId ? `Tax: ${doctorObj.taxId}` : '', doctorObj.address].filter(Boolean).join(' • ')}
+                      {[doctorObj.phone, doctorObj.taxId ? `Tax ID: ${doctorObj.taxId}` : '', doctorObj.address].filter(Boolean).join(' • ')}
                     </span>
                   </>
                 )}

@@ -52,15 +52,21 @@ export default function HalfA4Bill({
             )}
 
             <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-800 pt-0.5">
-              {sellerDetails.gstin && (
-                <span>
-                  <strong className="text-black">GSTIN:</strong>{' '}
-                  <span className="font-mono font-semibold">{sellerDetails.gstin}</span>
-                </span>
-              )}
               {sellerDetails.contact && (
                 <span>
                   <strong className="text-black">Phone:</strong> {sellerDetails.contact}
+                </span>
+              )}
+              {sellerDetails.gstin && (
+                <span>
+                  <strong className="text-black">Tax ID:</strong>{' '}
+                  <span className="font-mono font-semibold">{sellerDetails.gstin}</span>
+                </span>
+              )}
+              {sellerDetails.dlNo && (
+                <span>
+                  <strong className="text-black">DL No:</strong>{' '}
+                  <span className="font-mono font-semibold">{sellerDetails.dlNo}</span>
                 </span>
               )}
             </div>
