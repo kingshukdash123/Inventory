@@ -219,6 +219,7 @@ export default function SellingPage({ searchQuery }) {
       <SellingBillsList
         officialSellingBills={officialSellingBills}
         draftSellingBills={draftSellingBills}
+        doctors={doctors}
         totalOutstandingDues={totalOutstandingDues}
         searchQuery={searchQuery}
         onSelectSellingBill={(sellingBill) => setSelectedSellingBill(sellingBill)}

@@ -18,9 +18,18 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/calculations';
 
+const isTaxIdEmpty = (val) => {
+  if (!val) return true;
+  const str = String(val).trim();
+  if (!str) return true;
+  const upper = str.toUpperCase();
+  return upper === 'N/A' || upper === 'NA' || upper === 'NONE' || upper === '-' || upper === 'NULL' || upper === 'UNDEFINED';
+};
+
 export default function SellingBillsList({ 
   officialSellingBills = [], 
   draftSellingBills = [],
+  doctors = [],
   totalOutstandingDues = 0,
   searchQuery, 
   onSelectSellingBill, 
@@ -34,6 +43,21 @@ export default function SellingBillsList({
   const [sellingBillMode, setSellingBillMode] = useState('official'); // 'official' (Published) | 'draft'
 
   const currentSellingBills = sellingBillMode === 'official' ? officialSellingBills : draftSellingBills;
+
+  const getDoctorTaxId = (bill) => {
+    const directTaxId = bill.doctorTaxId || bill.taxId || bill.gstin;
+    if (!isTaxIdEmpty(directTaxId)) return String(directTaxId).trim();
+    if (doctors && doctors.length && bill.doctorName) {
+      const matched = doctors.find(
+        (d) => d.name?.trim().toLowerCase() === bill.doctorName?.trim().toLowerCase()
+      );
+      if (matched) {
+        const docTaxId = matched.taxId || matched.gstin;
+        if (!isTaxIdEmpty(docTaxId)) return String(docTaxId).trim();
+      }
+    }
+    return '';
+  };
 
   // Filter and sort logic (order by invoice date descending, tie-break by createdAt)
   const getInvoiceDateTimestamp = (bill) => {
@@ -328,6 +352,8 @@ export default function SellingBillsList({
               <tbody className="divide-y divide-zinc-800/60 font-medium">
                 {filteredSellingBills.map((sellingBill) => {
                   const summary = sellingBill.summary || {};
+                  const doctorTaxId = getDoctorTaxId(sellingBill);
+                  const isDoctorTaxIdMissing = isTaxIdEmpty(doctorTaxId);
                   return (
                     <tr 
                       key={sellingBill.id}
@@ -389,9 +415,24 @@ export default function SellingBillsList({
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => onPrintSellingBill && onPrintSellingBill(sellingBill)}
-                            className="p-1.5 rounded-md hover:bg-zinc-800 text-zinc-450 hover:text-zinc-100 transition-colors"
-                            title="Print / Preview Invoice (Half-A4)"
+                            onClick={() => {
+                              if (!onPrintSellingBill) return;
+                              if (!sellingBill.doctorTaxId && doctorTaxId) {
+                                onPrintSellingBill({ ...sellingBill, doctorTaxId });
+                              } else {
+                                onPrintSellingBill(sellingBill);
+                              }
+                            }}
+                            className={`p-1.5 rounded-md hover:bg-zinc-800 transition-colors ${
+                              isDoctorTaxIdMissing
+                                ? 'text-red-500 hover:text-red-400'
+                                : 'text-zinc-450 hover:text-zinc-100'
+                            }`}
+                            title={
+                              isDoctorTaxIdMissing
+                                ? "Print / Preview Invoice (Warning: Tax ID is missing)"
+                                : "Print / Preview Invoice (Half-A4)"
+                            }
                           >
                             <Printer className="h-4 w-4" />
                           </button>
