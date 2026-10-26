@@ -21,6 +21,7 @@ export default function AddSellingBillModal({
   const [doctorPhone, setDoctorPhone] = useState('');
   const [doctorAddress, setDoctorAddress] = useState('');
   const [doctorTaxId, setDoctorTaxId] = useState('');
+  const [doctorDlNo, setDoctorDlNo] = useState('');
   const [invoiceDate, setInvoiceDate] = useState('');
   const [notes, setNotes] = useState('');
   const [fixedDiscount, setFixedDiscount] = useState('');
@@ -164,19 +165,20 @@ export default function AddSellingBillModal({
   // Load next doctor bill number preview for new bills
   useEffect(() => {
     let isMounted = true;
-    if (isOpen && !sellingBillToEdit) {
-      setIsBillNoLoading(true);
-      peekNextDoctorBillNumber()
-        .then((num) => {
+    async function loadBillPreview() {
+      if (isOpen && !sellingBillToEdit) {
+        setIsBillNoLoading(true);
+        try {
+          const num = await peekNextDoctorBillNumber();
           if (isMounted) setPreviewBillNo(num);
-        })
-        .catch((err) => console.error('Error peeking next bill number:', err))
-        .finally(() => {
+        } catch (err) {
+          console.error('Error peeking next bill number:', err);
+        } finally {
           if (isMounted) setIsBillNoLoading(false);
-        });
-    } else {
-      setIsBillNoLoading(false);
+        }
+      }
     }
+    loadBillPreview();
     return () => {
       isMounted = false;
     };
@@ -209,6 +211,7 @@ export default function AddSellingBillModal({
       setDoctorPhone(sellingBillToEdit.doctorPhone || '');
       setDoctorAddress(sellingBillToEdit.doctorAddress || sellingBillToEdit.address || '');
       setDoctorTaxId(sellingBillToEdit.doctorTaxId || sellingBillToEdit.taxId || sellingBillToEdit.gstin || '');
+      setDoctorDlNo(sellingBillToEdit.doctorDlNo || sellingBillToEdit.dlNo || '');
       setInvoiceDate(sellingBillToEdit.invoiceDate || new Date().toISOString().split('T')[0]);
       setNotes(sellingBillToEdit.notes || '');
       setFixedDiscount(sellingBillToEdit.summary?.fixedDiscount !== undefined && sellingBillToEdit.summary?.fixedDiscount !== null ? sellingBillToEdit.summary.fixedDiscount : (sellingBillToEdit.fixedDiscount || ''));
@@ -237,6 +240,7 @@ export default function AddSellingBillModal({
       setDoctorPhone('');
       setDoctorAddress('');
       setDoctorTaxId('');
+      setDoctorDlNo('');
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setFixedDiscount('');
@@ -329,6 +333,9 @@ export default function AddSellingBillModal({
       if (matched.taxId) {
         setDoctorTaxId(matched.taxId);
       }
+      if (matched.dlNo) {
+        setDoctorDlNo(matched.dlNo);
+      }
       setItems((prevItems) =>
         prevItems.map((item) => {
           if (!item.itemName.trim()) return item;
@@ -367,6 +374,9 @@ export default function AddSellingBillModal({
     }
     if (docObj.taxId) {
       setDoctorTaxId(docObj.taxId);
+    }
+    if (docObj.dlNo) {
+      setDoctorDlNo(docObj.dlNo);
     }
     setShowDoctorDropdown(false);
     setSelectedDoctorIndex(-1);
@@ -825,6 +835,7 @@ export default function AddSellingBillModal({
         doctorPhone,
         doctorAddress,
         doctorTaxId,
+        doctorDlNo: (doctorDlNo || '').toUpperCase().trim(),
         invoiceDate,
         notes,
         fixedDiscount: Number(fixedDiscount) || 0,
@@ -969,9 +980,14 @@ export default function AddSellingBillModal({
                             <span>{docObj.name}</span>
                             <span className="text-[10px] text-zinc-500 lowercase font-normal">(due: ₹{docObj.dueAmount.toFixed(2)})</span>
                           </div>
-                          {(docObj.address || docObj.taxId || docObj.phone) && (
+                          {(docObj.address || docObj.taxId || docObj.dlNo || docObj.phone) && (
                             <div className="text-[10px] text-zinc-500 font-normal truncate mt-0.5">
-                              {[docObj.taxId ? `Tax ID: ${docObj.taxId}` : '', docObj.address, docObj.phone].filter(Boolean).join(' • ')}
+                              {[
+                                docObj.taxId ? `Tax ID: ${docObj.taxId}` : '',
+                                docObj.dlNo ? `DL: ${docObj.dlNo}` : '',
+                                docObj.address,
+                                docObj.phone
+                              ].filter(Boolean).join(' • ')}
                             </div>
                           )}
                         </div>
@@ -993,7 +1009,7 @@ export default function AddSellingBillModal({
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
                     Doctor Address
                   </label>
@@ -1015,6 +1031,19 @@ export default function AddSellingBillModal({
                     value={doctorTaxId}
                     onChange={(e) => setDoctorTaxId(e.target.value.toUpperCase())}
                     placeholder="TAX ID"
+                    className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
+                    DL No. (Drug License)
+                  </label>
+                  <input
+                    type="text"
+                    value={doctorDlNo}
+                    onChange={(e) => setDoctorDlNo(e.target.value.toUpperCase())}
+                    placeholder="DL NO"
                     className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-500 rounded-lg px-3 py-1.5 text-xs text-zinc-200 outline-none font-mono uppercase"
                   />
                 </div>

@@ -71,11 +71,16 @@ export default function DoctorHistoryModal({
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
                 <span>Comprehensive list of all sales invoices and payment collections</span>
-                {(doctorObj.phone || doctorObj.taxId || doctorObj.address) && (
+                {(doctorObj.phone || doctorObj.taxId || doctorObj.dlNo || doctorObj.address) && (
                   <>
                     <span>•</span>
                     <span className="text-zinc-500 font-normal">
-                      {[doctorObj.phone, doctorObj.taxId ? `Tax ID: ${doctorObj.taxId}` : '', doctorObj.address].filter(Boolean).join(' • ')}
+                      {[
+                        doctorObj.phone,
+                        doctorObj.dlNo ? `DL No: ${doctorObj.dlNo}` : '',
+                        doctorObj.taxId ? `Tax ID: ${doctorObj.taxId}` : '',
+                        doctorObj.address
+                      ].filter(Boolean).join(' • ')}
                     </span>
                   </>
                 )}

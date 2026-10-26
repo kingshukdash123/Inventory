@@ -147,7 +147,8 @@ export async function addSellingBillToFirestore(sellingBillData) {
       sellingBillData.doctorName,
       sellingBillData.doctorPhone,
       sellingBillData.doctorAddress,
-      sellingBillData.doctorTaxId
+      sellingBillData.doctorTaxId,
+      sellingBillData.doctorDlNo
     );
   }
   const doctorId = sellingBillData.doctorId || (doctor ? doctor.id : '');
@@ -184,6 +185,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
     doctorPhone: sellingBillData.doctorPhone || '',
     doctorAddress: sellingBillData.doctorAddress || (doctor ? doctor.address : '') || '',
     doctorTaxId: sellingBillData.doctorTaxId || (doctor ? doctor.taxId : '') || '',
+    doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate || new Date().toISOString().split('T')[0],
     notes: sellingBillData.notes || '',
     initialDue: initialDue,
@@ -232,7 +234,8 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     sellingBillData.doctorName,
     sellingBillData.doctorPhone,
     sellingBillData.doctorAddress,
-    sellingBillData.doctorTaxId
+    sellingBillData.doctorTaxId,
+    sellingBillData.doctorDlNo
   );
   const doctorId = doctor ? doctor.id : '';
 
@@ -266,6 +269,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     doctorPhone: sellingBillData.doctorPhone || '',
     doctorAddress: sellingBillData.doctorAddress || (doctor ? doctor.address : '') || '',
     doctorTaxId: sellingBillData.doctorTaxId || (doctor ? doctor.taxId : '') || '',
+    doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate,
     notes: sellingBillData.notes || '',
     initialDue: newInitialDue,
@@ -320,7 +324,8 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     draftSellingBill.doctorName,
     draftSellingBill.doctorPhone,
     draftSellingBill.doctorAddress,
-    draftSellingBill.doctorTaxId
+    draftSellingBill.doctorTaxId,
+    draftSellingBill.doctorDlNo
   );
   const doctorId = doctor ? doctor.id : '';
   const prevDue = doctor ? doctor.dueAmount : 0;
@@ -347,6 +352,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     doctorPhone: draftSellingBill.doctorPhone || '',
     doctorAddress: draftSellingBill.doctorAddress || (doctor ? doctor.address : '') || '',
     doctorTaxId: draftSellingBill.doctorTaxId || (doctor ? doctor.taxId : '') || '',
+    doctorDlNo: draftSellingBill.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: draftSellingBill.invoiceDate,
     notes: draftSellingBill.notes || '',
     initialDue: initialDue,

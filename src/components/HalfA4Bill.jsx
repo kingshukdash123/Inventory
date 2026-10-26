@@ -93,11 +93,12 @@ export default function HalfA4Bill({
               )}
             </div>
 
-            {(sellingBill.doctorAddress || sellingBill.doctorTaxId) && (
+            {(sellingBill.doctorAddress || sellingBill.doctorTaxId || sellingBill.doctorDlNo || sellingBill.dlNo) && (
               <div className="text-[10.5px] text-zinc-600 truncate max-w-full">
                 {[
                   sellingBill.doctorAddress,
-                  sellingBill.doctorTaxId ? `Tax ID: ${sellingBill.doctorTaxId}` : ''
+                  sellingBill.doctorTaxId ? `Tax ID: ${sellingBill.doctorTaxId}` : '',
+                  (sellingBill.doctorDlNo || sellingBill.dlNo) ? `DL No: ${sellingBill.doctorDlNo || sellingBill.dlNo}` : ''
                 ].filter(Boolean).join(' | ')}
               </div>
             )}

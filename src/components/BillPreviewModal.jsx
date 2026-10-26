@@ -209,7 +209,9 @@ export default function BillPreviewModal({
       setTimeout(() => {
         try {
           iframe.remove();
-        } catch {}
+        } catch {
+          // ignore cleanup error if already removed
+        }
       }, 3000);
     }, 300);
   }, [sellingBill]);

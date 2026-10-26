@@ -34,6 +34,12 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
                     <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">Tax ID: {sellingBill.doctorTaxId}</span>
                   </>
                 )}
+                {(sellingBill.doctorDlNo || sellingBill.dlNo) && (
+                  <>
+                    <span>•</span>
+                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">DL No: {sellingBill.doctorDlNo || sellingBill.dlNo}</span>
+                  </>
+                )}
                 {sellingBill.doctorAddress && (
                   <>
                     <span>•</span>

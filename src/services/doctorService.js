@@ -61,7 +61,7 @@ export function subscribeDoctors(onUpdate) {
 /**
  * Get a doctor by name (case-insensitive) or create a new one if not exists
  */
-export async function getOrCreateDoctorByName(name, phone = '', address = '', taxId = '') {
+export async function getOrCreateDoctorByName(name, phone = '', address = '', taxId = '', dlNo = '') {
   if (!name || !name.trim()) return null;
   const normalizedName = name.trim().toUpperCase();
 
@@ -90,6 +90,10 @@ export async function getOrCreateDoctorByName(name, phone = '', address = '', ta
         updates.taxId = taxId.trim();
         existingData.taxId = taxId.trim();
       }
+      if (dlNo && dlNo.trim() && existingData.dlNo !== dlNo.trim()) {
+        updates.dlNo = dlNo.trim();
+        existingData.dlNo = dlNo.trim();
+      }
 
       if (Object.keys(updates).length > 0) {
         updates.updatedAt = serverTimestamp();
@@ -107,6 +111,7 @@ export async function getOrCreateDoctorByName(name, phone = '', address = '', ta
         phone: (phone || '').trim(),
         address: (address || '').trim(),
         taxId: (taxId || '').trim(),
+        dlNo: (dlNo || '').trim(),
         purchasedAmount: 0,
         paidAmount: 0,
         dueAmount: 0,

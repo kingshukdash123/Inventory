@@ -69,6 +69,7 @@ export default function SellingBillsList({
         (sellingBill.doctorPhone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.doctorAddress || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.doctorTaxId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((sellingBill.doctorDlNo || sellingBill.dlNo) || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (formattedDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.invoiceDate || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sellingBill.items || []).some(item => (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()))

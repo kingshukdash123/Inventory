@@ -5,6 +5,7 @@ export class Doctor {
         phone = "",
         address = "",
         taxId = "",
+        dlNo = "",
         purchasedAmount = 0,
         paidAmount = 0,
         dueAmount = 0,
@@ -16,6 +17,7 @@ export class Doctor {
         this.phone = phone;
         this.address = address;
         this.taxId = taxId;
+        this.dlNo = dlNo;
         this.purchasedAmount = Number(purchasedAmount) || 0;
         this.paidAmount = Number(paidAmount) || 0;
         this.dueAmount = Number(dueAmount) || 0;
@@ -30,6 +32,7 @@ export class Doctor {
             phone: json.phone || "",
             address: json.address || "",
             taxId: json.taxId || json.gstin || "",
+            dlNo: json.dlNo || json.doctorDlNo || "",
             purchasedAmount: json.purchasedAmount || 0,
             paidAmount: json.paidAmount || 0,
             dueAmount: json.dueAmount || 0,
@@ -44,6 +47,7 @@ export class Doctor {
             phone: this.phone,
             address: this.address,
             taxId: this.taxId,
+            dlNo: this.dlNo,
             purchasedAmount: this.purchasedAmount,
             paidAmount: this.paidAmount,
             dueAmount: this.dueAmount,

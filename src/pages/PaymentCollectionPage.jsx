@@ -152,7 +152,8 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
     docObj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (docObj.phone || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (docObj.address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (docObj.taxId || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (docObj.taxId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (docObj.dlNo || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredPayments = payments.filter(payObj => 
@@ -340,9 +341,13 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                         <div className="font-bold uppercase tracking-wide group-hover:text-blue-400 group-hover:underline transition-colors flex items-center gap-1.5">
                           <span>{docObj.name}</span>
                         </div>
-                        {docObj.phone && (
+                        {(docObj.phone || docObj.dlNo || docObj.taxId) && (
                           <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
-                            {docObj.phone}
+                            {[
+                              docObj.phone,
+                              docObj.dlNo ? `DL: ${docObj.dlNo}` : '',
+                              docObj.taxId ? `Tax ID: ${docObj.taxId}` : ''
+                            ].filter(Boolean).join(' • ')}
                           </div>
                         )}
                       </td>
