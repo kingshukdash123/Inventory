@@ -341,15 +341,18 @@ export default function PaymentCollectionPage({ searchQuery = '' }) {
                         <div className="font-bold uppercase tracking-wide group-hover:text-blue-400 group-hover:underline transition-colors flex items-center gap-1.5">
                           <span>{docObj.name}</span>
                         </div>
-                        {(docObj.phone || docObj.dlNo || docObj.taxId) && (
-                          <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
-                            {[
-                              docObj.phone,
-                              docObj.dlNo ? `DL: ${docObj.dlNo}` : '',
-                              docObj.taxId ? `Tax ID: ${docObj.taxId}` : ''
-                            ].filter(Boolean).join(' • ')}
-                          </div>
-                        )}
+                        {(() => {
+                          const meta = [
+                            docObj.phone?.trim(),
+                            docObj.dlNo?.trim() && docObj.dlNo.trim().toUpperCase() !== 'N/A' ? `DL: ${docObj.dlNo.trim()}` : null,
+                            docObj.taxId?.trim() && docObj.taxId.trim().toUpperCase() !== 'N/A' ? `Tax ID: ${docObj.taxId.trim()}` : null
+                          ].filter(Boolean);
+                          return meta.length > 0 ? (
+                            <div className="text-[11px] text-zinc-500 font-normal truncate max-w-xs mt-0.5">
+                              {meta.join(' • ')}
+                            </div>
+                          ) : null;
+                        })()}
                       </td>
                       <td className="py-4 px-6 text-right font-mono font-semibold text-zinc-300">
                         {formatCurrency(docObj.purchasedAmount)}

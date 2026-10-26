@@ -58,6 +58,21 @@ export default function DoctorHistoryModal({
     p.doctorId === doctorObj.id || (p.doctorName && p.doctorName.trim().toUpperCase() === normalizedDoctorName)
   );
 
+  const isValidInfo = (val) => {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    if (!trimmed) return false;
+    const upper = trimmed.toUpperCase();
+    return upper !== 'N/A' && upper !== 'NONE' && upper !== '-' && upper !== 'NULL' && upper !== 'UNDEFINED';
+  };
+
+  const docMeta = [
+    isValidInfo(doctorObj.phone) ? doctorObj.phone.trim() : null,
+    isValidInfo(doctorObj.dlNo) ? `DL No: ${doctorObj.dlNo.trim()}` : null,
+    isValidInfo(doctorObj.taxId) ? `Tax ID: ${doctorObj.taxId.trim()}` : null,
+    isValidInfo(doctorObj.address) ? doctorObj.address.trim() : null
+  ].filter(Boolean);
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
@@ -71,16 +86,11 @@ export default function DoctorHistoryModal({
               </h3>
               <p className="text-xs text-zinc-400 mt-0.5 flex flex-wrap items-center gap-2">
                 <span>Comprehensive list of all sales invoices and payment collections</span>
-                {(doctorObj.phone || doctorObj.taxId || doctorObj.dlNo || doctorObj.address) && (
+                {docMeta.length > 0 && (
                   <>
                     <span>•</span>
                     <span className="text-zinc-500 font-normal">
-                      {[
-                        doctorObj.phone,
-                        doctorObj.dlNo ? `DL No: ${doctorObj.dlNo}` : '',
-                        doctorObj.taxId ? `Tax ID: ${doctorObj.taxId}` : '',
-                        doctorObj.address
-                      ].filter(Boolean).join(' • ')}
+                      {docMeta.join(' • ')}
                     </span>
                   </>
                 )}

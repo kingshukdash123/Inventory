@@ -7,6 +7,19 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
   const summary = sellingBill.summary || {};
   const items = sellingBill.items || [];
 
+  const isValidInfo = (val) => {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    if (!trimmed) return false;
+    const upper = trimmed.toUpperCase();
+    return upper !== 'N/A' && upper !== 'NONE' && upper !== '-' && upper !== 'NULL' && upper !== 'UNDEFINED';
+  };
+
+  const docTaxId = isValidInfo(sellingBill.doctorTaxId) ? sellingBill.doctorTaxId.trim() : null;
+  const docDlNo = isValidInfo(sellingBill.doctorDlNo || sellingBill.dlNo) ? (sellingBill.doctorDlNo || sellingBill.dlNo).trim() : null;
+  const docAddress = isValidInfo(sellingBill.doctorAddress) ? sellingBill.doctorAddress.trim() : null;
+  const docPhone = isValidInfo(sellingBill.doctorPhone) ? sellingBill.doctorPhone.trim() : null;
+
   return (
     <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto`}>
       <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-[95vw] lg:max-w-7xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
@@ -22,28 +35,28 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
               <p className="text-xs text-zinc-400 flex flex-wrap items-center gap-2 mt-0.5">
                 <Building2 className="h-3.5 w-3.5 text-zinc-500" />
                 <span className="font-semibold text-zinc-300">{sellingBill.doctorName}</span>
-                {sellingBill.doctorPhone && (
+                {docPhone && (
                   <>
                     <span>•</span>
-                    <span className="text-zinc-400 font-mono">{sellingBill.doctorPhone}</span>
+                    <span className="text-zinc-400 font-mono">{docPhone}</span>
                   </>
                 )}
-                {sellingBill.doctorTaxId && (
+                {docTaxId && (
                   <>
                     <span>•</span>
-                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">Tax ID: {sellingBill.doctorTaxId}</span>
+                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">Tax ID: {docTaxId}</span>
                   </>
                 )}
-                {(sellingBill.doctorDlNo || sellingBill.dlNo) && (
+                {docDlNo && (
                   <>
                     <span>•</span>
-                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">DL No: {sellingBill.doctorDlNo || sellingBill.dlNo}</span>
+                    <span className="text-zinc-400 font-mono text-[11px] bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-750">DL No: {docDlNo}</span>
                   </>
                 )}
-                {sellingBill.doctorAddress && (
+                {docAddress && (
                   <>
                     <span>•</span>
-                    <span className="text-zinc-400 truncate max-w-xs">{sellingBill.doctorAddress}</span>
+                    <span className="text-zinc-400 truncate max-w-xs">{docAddress}</span>
                   </>
                 )}
                 <span>•</span>

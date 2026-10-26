@@ -32,6 +32,24 @@ export default function HalfA4Bill({
   const summary = sellingBill?.summary || {};
   const pageSubtotal = items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
+  const isValidInfo = (val) => {
+    if (!val || typeof val !== 'string') return false;
+    const trimmed = val.trim();
+    if (!trimmed) return false;
+    const upper = trimmed.toUpperCase();
+    return upper !== 'N/A' && upper !== 'NONE' && upper !== '-' && upper !== 'NULL' && upper !== 'UNDEFINED';
+  };
+
+  const sellerAddress = isValidInfo(sellerDetails?.address) ? sellerDetails.address.trim() : null;
+  const sellerContact = isValidInfo(sellerDetails?.contact) ? sellerDetails.contact.trim() : null;
+  const sellerGstin = isValidInfo(sellerDetails?.gstin) ? sellerDetails.gstin.trim() : null;
+  const sellerDlNo = isValidInfo(sellerDetails?.dlNo) ? sellerDetails.dlNo.trim() : null;
+
+  const docAddress = isValidInfo(sellingBill?.doctorAddress) ? sellingBill.doctorAddress.trim() : null;
+  const docTaxId = isValidInfo(sellingBill?.doctorTaxId) ? sellingBill.doctorTaxId.trim() : null;
+  const docDlNo = isValidInfo(sellingBill?.doctorDlNo || sellingBill?.dlNo) ? (sellingBill.doctorDlNo || sellingBill.dlNo).trim() : null;
+  const docPhone = isValidInfo(sellingBill?.doctorPhone) ? sellingBill.doctorPhone.trim() : null;
+
   return (
     <div className="half-a4-bill w-[210mm] h-[148.5mm] max-h-[148.5mm] box-border px-[7mm] py-[5mm] bg-white text-black flex flex-col justify-between overflow-hidden relative font-sans leading-none">
       
@@ -45,31 +63,38 @@ export default function HalfA4Bill({
               {sellerDetails.name || 'STORE NAME'}
             </h2>
             
-            {sellerDetails.address && (
+            {(sellerAddress || sellerContact) && (
               <p className="text-[11px] text-zinc-800 leading-tight">
-                {sellerDetails.address}
+                {sellerAddress && (
+                  <span>
+                    <strong className="text-black">Address:</strong> {sellerAddress}
+                  </span>
+                )}
+                {sellerAddress && sellerContact && <span> . </span>}
+                {sellerContact && (
+                  <span>
+                    <strong className="text-black">Phone:</strong> {sellerContact}
+                  </span>
+                )}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-800 pt-0.5">
-              {sellerDetails.contact && (
-                <span>
-                  <strong className="text-black">Phone:</strong> {sellerDetails.contact}
-                </span>
-              )}
-              {sellerDetails.gstin && (
-                <span>
-                  <strong className="text-black">Tax ID:</strong>{' '}
-                  <span className="font-mono font-semibold">{sellerDetails.gstin}</span>
-                </span>
-              )}
-              {sellerDetails.dlNo && (
-                <span>
-                  <strong className="text-black">DL No:</strong>{' '}
-                  <span className="font-mono font-semibold">{sellerDetails.dlNo}</span>
-                </span>
-              )}
-            </div>
+            {(sellerGstin || sellerDlNo) && (
+              <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-800 pt-0.5">
+                {sellerGstin && (
+                  <span>
+                    <strong className="text-black">Tax ID:</strong>{' '}
+                    <span className="font-mono font-semibold">{sellerGstin}</span>
+                  </span>
+                )}
+                {sellerDlNo && (
+                  <span>
+                    <strong className="text-black">DL No:</strong>{' '}
+                    <span className="font-mono font-semibold">{sellerDlNo}</span>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Document & Doctor Details (Right) - Clean & Perfectly Aligned */}
@@ -88,24 +113,38 @@ export default function HalfA4Bill({
             <div className="text-[11.5px] text-zinc-800 pt-0.5">
               <span className="text-zinc-600">Billed To: </span>
               <span className="font-bold text-[13px] text-black">{sellingBill.doctorName || 'Customer'}</span>
-              {sellingBill.doctorPhone && (
-                <span className="text-zinc-600 ml-1.5 font-mono">({sellingBill.doctorPhone})</span>
-              )}
             </div>
 
-            {(sellingBill.doctorAddress || sellingBill.doctorTaxId || sellingBill.doctorDlNo || sellingBill.dlNo) && (
-              <div className="text-[10.5px] text-zinc-600 truncate max-w-full">
-                {[
-                  sellingBill.doctorAddress,
-                  sellingBill.doctorTaxId ? `Tax ID: ${sellingBill.doctorTaxId}` : '',
-                  (sellingBill.doctorDlNo || sellingBill.dlNo) ? `DL No: ${sellingBill.doctorDlNo || sellingBill.dlNo}` : ''
-                ].filter(Boolean).join(' | ')}
+            {(docAddress || docPhone) && (
+              <div className="text-[10.5px] text-zinc-800 leading-tight truncate max-w-full">
+                {docAddress && (
+                  <span>
+                    <strong className="text-black">Address:</strong> {docAddress}
+                  </span>
+                )}
+                {docAddress && docPhone && <span> . </span>}
+                {docPhone && (
+                  <span>
+                    <strong className="text-black">Phone:</strong> {docPhone}
+                  </span>
+                )}
               </div>
             )}
 
-            {totalPages > 1 && (
-              <div className="text-[10px] text-zinc-500 pt-0.5 font-medium">
-                Page {pageNumber} of {totalPages}
+            {(docTaxId || docDlNo) && (
+              <div className="flex items-center justify-end gap-x-3 text-[10.5px] text-zinc-800 pt-0.5">
+                {docTaxId && (
+                  <span>
+                    <strong className="text-black">Tax ID:</strong>{' '}
+                    <span className="font-mono font-semibold">{docTaxId}</span>
+                  </span>
+                )}
+                {docDlNo && (
+                  <span>
+                    <strong className="text-black">DL No:</strong>{' '}
+                    <span className="font-mono font-semibold">{docDlNo}</span>
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -177,9 +216,14 @@ export default function HalfA4Bill({
 
       {/* Continuation Notice if not final page */}
       {!isFinal && (
-        <div className="flex items-center justify-between border border-zinc-300 bg-zinc-50 px-3 py-1 text-[9px] font-bold text-black mt-1">
-          <span>Subtotal: ₹{pageSubtotal.toFixed(2)}</span>
-          <span className="text-zinc-600 font-medium">
+        <div className="grid grid-cols-3 items-center border border-zinc-300 bg-zinc-50 px-3 py-1 text-[9px] font-bold text-black mt-1">
+          <span className="text-left font-bold text-black">
+            Subtotal: ₹{pageSubtotal.toFixed(2)}
+          </span>
+          <span className="text-center text-zinc-600 font-semibold">
+            Page {pageNumber} of {totalPages}
+          </span>
+          <span className="text-right text-zinc-600 font-medium">
             ... Continued on next page (Page {pageNumber + 1}) ➔
           </span>
         </div>
@@ -187,20 +231,27 @@ export default function HalfA4Bill({
 
       {/* Bottom Footer: Strictly ONLY printed on date & business signature on left, Bill Summary on right */}
       {isFinal && (
-        <div className="mt-1 pt-1.5 border-t border-zinc-300 flex items-end justify-between gap-6">
+        <div className="mt-1 pt-1.5 border-t border-zinc-300 flex items-end justify-between gap-4">
           
           {/* Bottom Left: ONLY Printed on Date & Business Signature */}
-          <div className="w-[50%] flex flex-col justify-end space-y-3">
+          <div className="w-[38%] flex flex-col justify-end space-y-3">
             <div className="text-[9px] text-zinc-600">
               Printed on: {new Date().toLocaleDateString('en-IN')}
             </div>
 
             <div>
               <div className="h-10"></div>
-              <p className="text-[8.5px] border-t border-zinc-400 font-medium text-black uppercase pt-1 tracking-wider inline-block min-w-[150px]">
+              <p className="text-[8.5px] border-t border-zinc-400 font-medium text-black uppercase pt-1 tracking-wider inline-block min-w-[140px]">
                 Authorized Signatory
               </p>
             </div>
+          </div>
+
+          {/* In between of Signature and Bill Summary: Page number */}
+          <div className="flex-1 flex flex-col items-center justify-end pb-1">
+            <span className="text-[9.5px] font-semibold text-zinc-600 tracking-wide">
+              Page {pageNumber} of {totalPages}
+            </span>
           </div>
 
           {/* Bottom Right: Bill Summary Box (Clean Black & White, No Colors, No Hard Borders) */}
