@@ -164,10 +164,7 @@ export function calculateSellingLineItem(item) {
 }
 
 export function calculateSellingBillSummary(items = [], fixedDiscount = 0) {
-  // Support both calculateSellingBillSummary(items, fixedDiscount) and legacy (items, prevDue, fixedDiscount, initialDue)
-  const fd = arguments.length >= 3
-    ? Math.max(0, Number(arguments[2]) || 0)
-    : Math.max(0, Number(fixedDiscount) || 0);
+  const fd = Math.max(0, Number(fixedDiscount) || 0);
 
   const summary = items.reduce((acc, rawItem) => {
     const item = calculateSellingLineItem(rawItem);
@@ -181,8 +178,6 @@ export function calculateSellingBillSummary(items = [], fixedDiscount = 0) {
     totalQuantity: 0,
     totalGst: 0,
     totalAmount: 0,
-    prevDue: 0,
-    initialDue: 0,
     fixedDiscount: fd,
     grandTotal: 0
   });
@@ -193,8 +188,6 @@ export function calculateSellingBillSummary(items = [], fixedDiscount = 0) {
   // Format to standard decimals
   summary.totalGst = Number(summary.totalGst.toFixed(2));
   summary.totalAmount = Number(summary.totalAmount.toFixed(2));
-  summary.prevDue = 0;
-  summary.initialDue = 0;
   summary.fixedDiscount = Number(fd.toFixed(2));
   summary.grandTotal = Number(summary.grandTotal.toFixed(2));
 

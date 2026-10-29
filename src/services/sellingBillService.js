@@ -186,7 +186,6 @@ export async function addSellingBillToFirestore(sellingBillData) {
     doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate || new Date().toISOString().split('T')[0],
     notes: sellingBillData.notes || '',
-    initialDue: 0,
     items: formattedItems,
     summary: summary,
     createdAt: serverTimestamp(),
@@ -261,7 +260,6 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate,
     notes: sellingBillData.notes || '',
-    initialDue: 0,
     items: formattedItems,
     summary: summary,
     isDraft: isDraft,
@@ -272,8 +270,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   if (oldBill && !oldBill.isDraft && oldBill.stockSynced) {
     await addBillBackToStock(oldBill);
     if (oldBill.doctorId) {
-      const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
-      const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
+      const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0));
       await adjustDoctorBalances(oldBill.doctorId, -oldBillNet, 0);
     }
   }
@@ -342,7 +339,6 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     doctorDlNo: draftSellingBill.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: draftSellingBill.invoiceDate,
     notes: draftSellingBill.notes || '',
-    initialDue: 0,
     items: formattedItems,
     summary: summary,
     isDraft: false,
@@ -453,8 +449,7 @@ export async function deleteSellingBillFromFirestore(sellingBillId) {
         });
 
         if (oldBill.doctorId) {
-          const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
-          const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
+          const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0));
           await adjustDoctorBalances(oldBill.doctorId, -oldBillNet, 0);
         }
       } else {
