@@ -196,18 +196,6 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
                 <span className="font-mono text-zinc-400">{formatCurrency(summary.totalGst)}</span>
               </div>
 
-              <div className="flex justify-between text-xs text-zinc-300">
-                <span>Previous Due:</span>
-                <span className="font-mono text-zinc-450">{formatCurrency(summary.prevDue)}</span>
-              </div>
-
-              {Number(summary.initialDue) > 0 && (
-                <div className="flex justify-between text-xs text-zinc-300 font-medium">
-                  <span>Initial Due:</span>
-                  <span className="font-mono text-amber-400">+ {formatCurrency(summary.initialDue)}</span>
-                </div>
-              )}
-
               {Number(summary.fixedDiscount) > 0 && (
                 <div className="flex justify-between text-xs text-amber-400/90 font-medium">
                   <span>Fixed Discount:</span>
@@ -216,7 +204,7 @@ export default function SellingBillDetailModal({ sellingBill, isOpen, onClose, o
               )}
 
               <div className="flex justify-between text-base font-bold text-zinc-100 border-t border-zinc-800 pt-3">
-                <span>Grand Cumulative Total:</span>
+                <span>Grand Total:</span>
                 <span className="font-mono text-zinc-100 text-lg">{formatCurrency(summary.grandTotal)}</span>
               </div>
             </div>

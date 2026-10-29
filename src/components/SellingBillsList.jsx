@@ -295,9 +295,7 @@ export default function SellingBillsList({
                   <th className="py-3.5 px-4">Doctor</th>
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4 text-center">Items</th>
-                  <th className="py-3.5 px-4 text-right">Sold Net</th>
                   <th className="py-3.5 px-4 text-right">GST</th>
-                  <th className="py-3.5 px-4 text-right">Prev Due</th>
                   <th className="py-3.5 px-4 text-right">Grand Total</th>
                   <th className="py-3.5 px-4 text-center">Action</th>
                 </tr>
@@ -309,8 +307,6 @@ export default function SellingBillsList({
                     <td className="py-4 px-4"><div className="h-3.5 bg-zinc-800 rounded w-36"></div></td>
                     <td className="py-4 px-4"><div className="h-3.5 bg-zinc-800 rounded w-24"></div></td>
                     <td className="py-4 px-4 text-center"><div className="h-5 bg-zinc-800 rounded w-16 mx-auto"></div></td>
-                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-14 ml-auto"></div></td>
-                    <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-10 ml-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-10 ml-auto"></div></td>
                     <td className="py-4 px-4 text-right"><div className="h-3.5 bg-zinc-800 rounded w-16 ml-auto font-bold"></div></td>
                     <td className="py-4 px-4 text-center"><div className="h-7 bg-zinc-800 rounded w-20 mx-auto"></div></td>
@@ -342,9 +338,7 @@ export default function SellingBillsList({
                   <th className="py-3.5 px-4">Doctor</th>
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4 text-center">Items</th>
-                  <th className="py-3.5 px-4 text-right">Sold Net</th>
                   <th className="py-3.5 px-4 text-right">GST</th>
-                  <th className="py-3.5 px-4 text-right">Prev Due</th>
                   <th className="py-3.5 px-4 text-right">Grand Total</th>
                   <th className="py-3.5 px-4 text-center">Action</th>
                 </tr>
@@ -393,14 +387,8 @@ export default function SellingBillsList({
                           {summary.totalItems || (sellingBill.items || []).length} products
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-200">
-                        {formatCurrency(summary.totalAmount)}
-                      </td>
                       <td className="py-3.5 px-4 text-right font-mono text-zinc-400">
                         {formatCurrency(summary.totalGst)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-zinc-450">
-                        {formatCurrency(summary.prevDue)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-bold text-zinc-100 text-sm">
                         {formatCurrency(summary.grandTotal)}

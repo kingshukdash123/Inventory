@@ -75,7 +75,7 @@ export class SellingBillSummary {
         prevDue = 0,
         initialDue = 0,
         fixedDiscount = 0,
-        grandTotal = 0, // totalAmount + prevDue + initialDue - fixedDiscount
+        grandTotal = 0, // totalAmount - fixedDiscount
     } = {}) {
         this.totalItems = Number(totalItems) || 0;
         this.totalQuantity = Number(totalQuantity) || 0;
@@ -88,15 +88,19 @@ export class SellingBillSummary {
     }
 
     static fromJson(json = {}) {
+        const totalAmount = Number(json.totalAmount) || 0;
+        const fixedDiscount = Number(json.fixedDiscount) || 0;
+        const grandTotal = Math.max(0, totalAmount - fixedDiscount);
+
         return new SellingBillSummary({
             totalItems: json.totalItems || 0,
             totalQuantity: json.totalQuantity || 0,
             totalGst: json.totalGst || 0,
-            totalAmount: json.totalAmount || 0,
-            prevDue: json.prevDue || 0,
-            initialDue: json.initialDue || 0,
-            fixedDiscount: json.fixedDiscount || 0,
-            grandTotal: json.grandTotal || 0,
+            totalAmount: totalAmount,
+            prevDue: 0,
+            initialDue: 0,
+            fixedDiscount: fixedDiscount,
+            grandTotal: grandTotal,
         });
     }
 
@@ -163,7 +167,7 @@ export class SellingBill {
             doctorDlNo: json.doctorDlNo || json.dlNo || "",
             invoiceDate: json.invoiceDate || "",
             notes: json.notes || "",
-            initialDue: json.initialDue || json.summary?.initialDue || 0,
+            initialDue: 0,
             items: (json.items || []).map(item => SellingBillItem.fromJson(item)),
             summary: SellingBillSummary.fromJson(json.summary || {}),
             createdAt: json.createdAt?.toDate?.() || json.createdAt || "",

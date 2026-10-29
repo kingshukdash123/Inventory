@@ -152,7 +152,6 @@ export async function addSellingBillToFirestore(sellingBillData) {
     );
   }
   const doctorId = sellingBillData.doctorId || (doctor ? doctor.id : '');
-  const prevDue = doctor ? doctor.dueAmount : 0;
 
   const zeroQtyItem = (sellingBillData.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
   if (zeroQtyItem) {
@@ -165,8 +164,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(sellingBillData.fixedDiscount) || 0;
-  const initialDue = Number(sellingBillData.initialDue) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, initialDue);
+  const summary = calculateSellingBillSummary(formattedItems, fixedDiscount);
   const isDraft = !!sellingBillData.isDraft;
 
   const billDocRef = doc(collection(db, COLLECTION_NAME));
@@ -188,7 +186,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
     doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate || new Date().toISOString().split('T')[0],
     notes: sellingBillData.notes || '',
-    initialDue: initialDue,
+    initialDue: 0,
     items: formattedItems,
     summary: summary,
     createdAt: serverTimestamp(),
@@ -204,7 +202,7 @@ export async function addSellingBillToFirestore(sellingBillData) {
     });
 
     if (doctorId) {
-      const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
+      const billNet = Math.max(0, summary.totalAmount - (summary.fixedDiscount || 0));
       await adjustDoctorBalances(doctorId, billNet, 0);
     }
   } else {
@@ -239,14 +237,6 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
   );
   const doctorId = doctor ? doctor.id : '';
 
-  // If the doctor name did not change, subtract old bill amount to calculate true previous dues
-  let prevDue = doctor ? doctor.dueAmount : 0;
-  if (oldBill && !oldBill.isDraft && oldBill.doctorId === doctorId) {
-    const oldInitialDue = Number(oldBill.initialDue || oldBill.summary?.initialDue) || 0;
-    const oldBillNet = Math.max(0, oldBill.summary.totalAmount - (oldBill.summary.fixedDiscount || 0)) + oldInitialDue;
-    prevDue = Math.max(0, prevDue - oldBillNet);
-  }
-
   const zeroQtyItem = (sellingBillData.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
   if (zeroQtyItem) {
     throw new Error(
@@ -258,8 +248,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
 
   const formattedItems = (sellingBillData.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(sellingBillData.fixedDiscount) || 0;
-  const newInitialDue = Number(sellingBillData.initialDue) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, newInitialDue);
+  const summary = calculateSellingBillSummary(formattedItems, fixedDiscount);
 
   const sellingBill = new SellingBill({
     id: sellingBillId,
@@ -272,7 +261,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     doctorDlNo: sellingBillData.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: sellingBillData.invoiceDate,
     notes: sellingBillData.notes || '',
-    initialDue: newInitialDue,
+    initialDue: 0,
     items: formattedItems,
     summary: summary,
     isDraft: isDraft,
@@ -302,7 +291,7 @@ export async function updateSellingBillInFirestore(sellingBillId, sellingBillDat
     });
 
     if (doctorId) {
-      const newBillNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + newInitialDue;
+      const newBillNet = Math.max(0, summary.totalAmount - (summary.fixedDiscount || 0));
       await adjustDoctorBalances(doctorId, newBillNet, 0);
     }
   } else {
@@ -328,7 +317,6 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     draftSellingBill.doctorDlNo
   );
   const doctorId = doctor ? doctor.id : '';
-  const prevDue = doctor ? doctor.dueAmount : 0;
 
   const zeroQtyItem = (draftSellingBill.items || []).find(i => !i.quantity || Number(i.quantity) <= 0);
   if (zeroQtyItem) {
@@ -341,8 +329,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
 
   const formattedItems = (draftSellingBill.items || []).map(calculateSellingLineItem);
   const fixedDiscount = Number(draftSellingBill.summary?.fixedDiscount || draftSellingBill.fixedDiscount) || 0;
-  const initialDue = Number(draftSellingBill.initialDue || draftSellingBill.summary?.initialDue) || 0;
-  const summary = calculateSellingBillSummary(formattedItems, prevDue, fixedDiscount, initialDue);
+  const summary = calculateSellingBillSummary(formattedItems, fixedDiscount);
 
   const publishedBill = new SellingBill({
     id: draftSellingBill.id,
@@ -355,7 +342,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
     doctorDlNo: draftSellingBill.doctorDlNo || (doctor ? doctor.dlNo : '') || '',
     invoiceDate: draftSellingBill.invoiceDate,
     notes: draftSellingBill.notes || '',
-    initialDue: initialDue,
+    initialDue: 0,
     items: formattedItems,
     summary: summary,
     isDraft: false,
@@ -371,7 +358,7 @@ export async function publishDraftSellingBillToFirestore(draftSellingBill) {
   });
 
   if (doctorId) {
-    const billNet = Math.max(0, summary.totalAmount - summary.fixedDiscount) + initialDue;
+    const billNet = Math.max(0, summary.totalAmount - (summary.fixedDiscount || 0));
     await adjustDoctorBalances(doctorId, billNet, 0);
   }
 

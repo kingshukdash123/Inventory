@@ -270,14 +270,6 @@ export default function HalfA4Bill({
               <span className="font-mono text-black">{formatCurrency(summary.totalGst)}</span>
             </div>
 
-            {/* Initial Due and Prev Due combined and shown as Previous Due */}
-            <div className="flex justify-between text-[9px] text-zinc-800">
-              <span>Previous Due:</span>
-              <span className="font-mono text-black">
-                {formatCurrency((Number(summary.prevDue) || 0) + (Number(summary.initialDue) || 0))}
-              </span>
-            </div>
-
             {Number(summary.fixedDiscount) > 0 && (
               <div className="flex justify-between text-[9px] text-zinc-800">
                 <span>Fixed Discount:</span>
