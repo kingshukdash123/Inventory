@@ -40,6 +40,7 @@ export default function HalfA4Bill({
     return upper !== 'N/A' && upper !== 'NONE' && upper !== '-' && upper !== 'NULL' && upper !== 'UNDEFINED';
   };
 
+  const sellerName = isValidInfo(sellerDetails?.name) ? sellerDetails.name.trim() : null;
   const sellerAddress = isValidInfo(sellerDetails?.address) ? sellerDetails.address.trim() : null;
   const sellerContact = isValidInfo(sellerDetails?.contact) ? sellerDetails.contact.trim() : null;
   const sellerGstin = isValidInfo(sellerDetails?.gstin) ? sellerDetails.gstin.trim() : null;
@@ -59,9 +60,11 @@ export default function HalfA4Bill({
           
           {/* Seller Details (Left) */}
           <div className="w-[50%] flex flex-col space-y-1">
-            <h2 className="text-[15px] font-bold uppercase tracking-tight text-black font-sans leading-tight">
-              {sellerDetails.name || 'STORE NAME'}
-            </h2>
+            {sellerName && (
+              <h2 className="text-[15px] font-bold uppercase tracking-tight text-black font-sans leading-tight">
+                {sellerName}
+              </h2>
+            )}
             
             {(sellerAddress || sellerContact) && (
               <p className="text-[11px] text-zinc-800 leading-tight">

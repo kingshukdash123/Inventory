@@ -72,11 +72,11 @@ export default function SettingsPage() {
 
     try {
       const sellerDetails = {
-        name: storeName.toUpperCase().trim(),
-        address: address.trim(),
-        gstin: gstin.toUpperCase().trim(),
-        dlNo: dlNo.toUpperCase().trim(),
-        contact: contact.trim()
+        name: (storeName || '').toUpperCase().trim(),
+        address: (address || '').trim(),
+        gstin: (gstin || '').toUpperCase().trim(),
+        dlNo: (dlNo || '').toUpperCase().trim(),
+        contact: (contact || '').trim()
       };
 
       // 1. Save to Firestore
@@ -126,19 +126,18 @@ export default function SettingsPage() {
               <Settings className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-zinc-100">Store Profile (Seller Details)</h4>
-              <p className="text-[11px] text-zinc-550">These details appear on new invoices.</p>
+              <h4 className="text-sm font-bold text-zinc-100">Store Profile (Distributor Details)</h4>
+              <p className="text-[11px] text-zinc-500">All fields are optional. Any field left empty will not appear on printed bills.</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
               <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                Store / Business Name
+                Store / Business Name <span className="text-[10px] lowercase text-zinc-500 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 placeholder="E.G. YOUR PHARMACY NAME"
@@ -148,11 +147,10 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                Store Address
+                Store Address <span className="text-[10px] lowercase text-zinc-500 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="E.G. 12, BROAD STREET, CITY, STATE - PINCODE"
@@ -162,11 +160,10 @@ export default function SettingsPage() {
 
             <div>
               <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                Contact Number
+                Contact Number <span className="text-[10px] lowercase text-zinc-500 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="E.G. +91 99999 99999"
@@ -177,11 +174,10 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                  Tax ID
+                  Tax ID / GSTIN <span className="text-[10px] lowercase text-zinc-500 font-normal">(optional)</span>
                 </label>
                 <input
                   type="text"
-                  required
                   value={gstin}
                   onChange={(e) => setGstin(e.target.value)}
                   placeholder="E.G. 19AABCA1234F1Z0"
@@ -191,7 +187,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="block text-[11px] font-semibold uppercase text-zinc-400 mb-1">
-                  DL No. (Drug License)
+                  DL No. (Drug License) <span className="text-[10px] lowercase text-zinc-500 font-normal">(optional)</span>
                 </label>
                 <input
                   type="text"
@@ -208,7 +204,7 @@ export default function SettingsPage() {
           <div className="p-3 bg-zinc-950 border border-zinc-800/80 rounded-lg text-[11px] text-zinc-500 flex items-start gap-2">
             <ShieldAlert className="h-4 w-4 text-zinc-650 shrink-0 mt-0.5" />
             <span>
-              Saving these details updates your store details. Invoices created will show this profile.
+              Fill in only the details you wish to display. Any blank fields will automatically be hidden from printed selling bills.
             </span>
           </div>
 

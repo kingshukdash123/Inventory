@@ -899,17 +899,30 @@ export default function AddSellingBillModal({
                 </h4>
               </div>
               <div className="space-y-1.5 text-xs text-zinc-300">
-                <p className="font-bold text-sm text-zinc-100">{sellerDetails.name || 'Company Name'}</p>
-                <p className="text-zinc-400 text-xs leading-relaxed">{sellerDetails.address || 'Address not specified'}</p>
-                <p className="text-zinc-400 text-[11px]">
-                  <span className="text-zinc-500 font-semibold">Contact:</span> {sellerDetails.contact || 'N/A'}
-                </p>
-                <p className="font-mono text-zinc-400 text-[11px]">
-                  <span className="text-zinc-500 font-semibold">Tax ID:</span> {sellerDetails.gstin || 'N/A'}
-                </p>
-                <p className="font-mono text-zinc-400 text-[11px]">
-                  <span className="text-zinc-500 font-semibold">DL No:</span> {sellerDetails.dlNo || 'N/A'}
-                </p>
+                {sellerDetails?.name && (
+                  <p className="font-bold text-sm text-zinc-100">{sellerDetails.name}</p>
+                )}
+                {sellerDetails?.address && (
+                  <p className="text-zinc-400 text-xs leading-relaxed">{sellerDetails.address}</p>
+                )}
+                {sellerDetails?.contact && (
+                  <p className="text-zinc-400 text-[11px]">
+                    <span className="text-zinc-500 font-semibold">Contact:</span> {sellerDetails.contact}
+                  </p>
+                )}
+                {sellerDetails?.gstin && (
+                  <p className="font-mono text-zinc-400 text-[11px]">
+                    <span className="text-zinc-500 font-semibold">Tax ID:</span> {sellerDetails.gstin}
+                  </p>
+                )}
+                {sellerDetails?.dlNo && (
+                  <p className="font-mono text-zinc-400 text-[11px]">
+                    <span className="text-zinc-500 font-semibold">DL No:</span> {sellerDetails.dlNo}
+                  </p>
+                )}
+                {!sellerDetails?.name && !sellerDetails?.address && !sellerDetails?.contact && !sellerDetails?.gstin && !sellerDetails?.dlNo && (
+                  <p className="text-zinc-500 italic text-[11px]">No seller details configured in Settings</p>
+                )}
               </div>
             </div>
 
